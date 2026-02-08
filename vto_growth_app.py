@@ -135,9 +135,11 @@ def ss_init(key, default):
 st.sidebar.markdown("## Global")
 st.sidebar.checkbox("Move both sides (R+L)", key="move_both")
 st.sidebar.checkbox("Override calculated values", key="override")
+st.sidebar.checkbox("Include growth contribution", key="include_growth", value=True)
 
 move_both = st.session_state["move_both"]
 override = st.session_state["override"]
+include_growth = st.session_state["include_growth"]
 
 ss_init("move_both", True)
 ss_init("override", False)
@@ -279,10 +281,11 @@ with step2:
             dist_L = st.number_input("Distalizing 6–6 (L)", value=0.0, step=0.1, key="dist_L")
             ext_L = st.number_input("Extraction space (L)", value=0.0, step=0.1, key="ext_L")
 
-        # Growth applied symmetrically for MVP
-        growth_total = float(st.session_state.get("growth_space_total", 0.0))
-        growth_R = growth_total / 2.0
-        growth_L = growth_total / 2.0
+            growth_total_raw = float(st.session_state.get("growth_space_total", 0.0))
+            growth_total = growth_total_raw if include_growth else 0.0
+            
+            growth_R = growth_total / 2.0
+            growth_L = growth_total / 2.0
 
         initial_R = compute_initial_discrepancy(ant_R, cos_R, mid_R, inc_R)
         initial_L = compute_initial_discrepancy(ant_L, cos_L, mid_L, inc_L)
@@ -292,16 +295,20 @@ with step2:
 
         st.markdown('<div class="band-yellow"><b>Totals</b></div>', unsafe_allow_html=True)
 
+        growth_label = "Growth (space equiv) [ON]" if include_growth else "Growth (space equiv) [OFF]"
+
         totals = pd.DataFrame(
             [
                 ["Initial Discrepancy", initial_R, initial_L],
-                ["Treatment Gained", strip_R + exp_R + dist_R + ext_R, strip_L + exp_L + dist_L + ext_L],
-                ["Growth (space equiv)", growth_R, growth_L],
+                ["Treatment Gained", strip_R + exp_R + dist_R + ext_R,
+                                     strip_L + exp_L + dist_L + ext_L],
+                [growth_label, growth_R, growth_L],
                 ["Total Gained", gained_R, gained_L],
                 ["Remaining Discrepancy", remaining_R, remaining_L],
             ],
             columns=["Component", "R (mm)", "L (mm)"],
         )
+        
         st.dataframe(totals, use_container_width=True, hide_index=True)
 
         st.markdown("</div>", unsafe_allow_html=True)
