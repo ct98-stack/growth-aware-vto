@@ -317,12 +317,7 @@ with step1:
             svg = initial_position_svg(r6=r6, midline=0.0, l6=l6, d=d, s=s)  
             
             st.markdown(
-                initial_position_svg(
-                    r6=r6,
-                    midline=0.0,
-                    l6=l6,
-                    d=d,
-                ),
+                svg = initial_position_svg(r6=r6, midline=0.0, l6=l6, d=d, s=s),
                 unsafe_allow_html=True
             )
         
