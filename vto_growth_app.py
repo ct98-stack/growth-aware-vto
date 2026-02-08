@@ -158,9 +158,9 @@ def initial_position_svg(r6: float, l6: float, d: float, s: float) -> str:
         <line x1="{cx+160}" y1="{y_line-10}" x2="{cx+160}" y2="{y_line+10}" stroke="#333" stroke-width="3"/>
 
         <!-- Teeth placeholders -->
+        # Teeth placeholders
         {tooth(x_r6, y_line+35, "6")}
-        {tooth(x_mid-15, y_line+35, "1")}
-        {tooth(x_mid+25, y_line+35, "1")}
+        {tooth(x_mid, y_line+35, "1")}
         {tooth(x_l6, y_line+35, "6")}
 
         <!-- Input boxes (visual only) -->
