@@ -1,8 +1,7 @@
 # vto_growth_app.py
-# Streamlit MVP: Growth-aware Dental VTO (McLaughlin/Dolphin-inspired UI)
-# Dolphin sign convention: crowding is NEGATIVE, spacing is POSITIVE.
+# Streamlit MVP: Growth-aware Dental VTO (McLaughlin-inspired)
+# Sign convention: crowding is NEGATIVE, spacing is POSITIVE.
 # Space gained rows (IPR/Expansion/Distalization/Extraction/Growth) are POSITIVE.
-# Goal: Remaining Discrepancy ≈ 0.
 
 import pandas as pd
 import streamlit as st
