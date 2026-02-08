@@ -1,142 +1,239 @@
 # vto_growth_app.py
-# Streamlit MVP: Growth-aware Dental VTO (McLaughlin/Dolphin-inspired UI)
-# Dolphin sign convention:
-#   - crowding is NEGATIVE
-#   - spacing is POSITIVE
-#   - space gained (IPR/Expansion/Distalization/Extraction/Growth) is POSITIVE
-# Goal: Remaining Discrepancy ≈ 0
+# Growth-aware Dental VTO (McLaughlin/Dolphin-inspired) — Upper + Lower arches with separate calculations
+# Adds (LOWER ONLY): dental midline + skeletal midline (numbers track with LOWER DENTAL midline)
 
-from __future__ import annotations
-
-import pandas as pd
 import streamlit as st
+import pandas as pd
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="Growth-aware Dental VTO", layout="wide")
 
+# -----------------------------
+# Page + styling
+# -----------------------------
+st.set_page_config(page_title="Growth-aware Dental VTO (McLaughlin-inspired)", layout="wide")
 
-# =========================================================
-# Growth Priors (MVP placeholders — replace with your data)
-# =========================================================
-# Units: (IMW mm/year, ICW mm/year)
-GROWTH_PRIORS = {
-    "Female": {
-        "pre-peak": {"low": (0.20, 0.10), "avg": (0.50, 0.30), "high": (0.80, 0.50)},
-        "peak": {"low": (0.15, 0.08), "avg": (0.35, 0.20), "high": (0.60, 0.35)},
-        "post-peak": {"low": (0.05, 0.02), "avg": (0.10, 0.05), "high": (0.20, 0.10)},
-    },
-    "Male": {
-        "pre-peak": {"low": (0.25, 0.12), "avg": (0.60, 0.35), "high": (0.90, 0.55)},
-        "peak": {"low": (0.20, 0.10), "avg": (0.45, 0.25), "high": (0.70, 0.40)},
-        "post-peak": {"low": (0.06, 0.03), "avg": (0.12, 0.06), "high": (0.25, 0.12)},
-    },
+CSS = """
+<style>
+/* Layout */
+.main .block-container {max-width: 1280px; padding-top: 1.8rem; padding-bottom: 3rem;}
+h1 {letter-spacing: -0.03em; margin-bottom: 0.2rem;}
+.small-muted {color: rgba(49,51,63,0.65); font-size: 0.95rem;}
+
+/* Panels */
+.panel {
+  border: 1px solid rgba(49,51,63,.15);
+  border-radius: 16px;
+  padding: 16px 16px 12px 16px;
+  background: white;
+  margin-bottom: 14px;
+}
+.panel-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  margin-bottom: 10px;
 }
 
-
-def growth_space_equivalent_mm(
-    sex: str,
-    cvm_stage: str,
-    profile: str,
-    horizon_months: int,
-    coeff_imw_to_perimeter: float = 0.75,
-    coeff_icw_to_perimeter: float = 0.55,
-) -> tuple[float, float, float]:
-    """
-    Returns: (ΔIMW, ΔICW, ΔArchPerimeterSpaceEquiv) over horizon.
-    Space equiv is used as a "space gained" term in Dolphin accounting.
-    """
-    years = horizon_months / 12.0
-    imw_per_year, icw_per_year = GROWTH_PRIORS[sex][cvm_stage][profile]
-    delta_imw = imw_per_year * years
-    delta_icw = icw_per_year * years
-    delta_perimeter = coeff_imw_to_perimeter * delta_imw + coeff_icw_to_perimeter * delta_icw
-    return float(delta_imw), float(delta_icw), float(delta_perimeter)
-
-
-# =========================================================
-# Dolphin/McLaughlin-style accounting (sign conventions)
-# =========================================================
-def compute_initial_discrepancy(*components: float) -> float:
-    """
-    Dolphin convention:
-    - Crowding is negative, spacing is positive
-    - COS often entered negative (as in Dolphin UI)
-    Initial Discrepancy = sum of component inputs.
-    """
-    return float(sum(components))
+/* Bands */
+.band-gray {
+  background: rgba(49,51,63,.05);
+  border: 1px solid rgba(49,51,63,.10);
+  border-radius: 12px;
+  padding: 12px;
+}
+.band-blue {
+  background: rgba(30, 111, 255, .08);
+  border: 1px solid rgba(30, 111, 255, .18);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin: 10px 0 10px 0;
+  font-weight: 750;
+}
+.band-green {
+  background: rgba(30, 180, 90, .08);
+  border: 1px solid rgba(30, 180, 90, .18);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin: 10px 0 10px 0;
+  font-weight: 750;
+}
+.hint {color: rgba(49,51,63,0.65); font-size: 0.92rem;}
+hr {border: none; border-top: 1px solid rgba(49,51,63,.12); margin: 18px 0;}
+</style>
+"""
+st.markdown(CSS, unsafe_allow_html=True)
 
 
-def compute_remaining_dolphin(
-    initial_discrepancy: float,
-    stripping: float,
-    expansion: float,
-    distalization: float,
-    extraction: float,
-    growth_space: float,
-) -> tuple[float, float]:
-    """
-    Dolphin convention:
-    - Space-gaining mechanics are positive.
-    Remaining Discrepancy = Initial Discrepancy + Total Gained
-    Target is near 0.
-    """
-    total_gained = float(stripping + expansion + distalization + extraction + growth_space)
-    remaining = float(initial_discrepancy + total_gained)
-    return total_gained, remaining
+# -----------------------------
+# Helpers: session state
+# -----------------------------
+def ss_init(key: str, value):
+    if key not in st.session_state:
+        st.session_state[key] = value
 
 
-def remaining_status(rem: float) -> str:
-    if abs(rem) < 0.25:
-        return "On target (≈ 0)"
-    if rem < 0:
+# -----------------------------
+# Dolphin sign convention helpers
+# -----------------------------
+def remaining_status(x: float) -> str:
+    # crowding negative -> remaining negative means still crowded
+    if abs(x) < 0.05:
+        return "≈ balanced (near 0)"
+    if x < 0:
         return "Still short on space (crowding remains)"
-    return "Excess space (over-corrected / spacing remaining)"
+    return "Excess space (spacing remains)"
 
 
-# =========================================================
-# Dolphin-ish SVG for Step 1 (Initial Position)
-# =========================================================
+def compute_initial_discrepancy(ant_cs: float, cos: float, midline_component: float, incisor_pos: float) -> float:
+    """
+    Dolphin-style: Initial discrepancy is sum of contributing rows.
+    Sign convention: Crowding negative, spacing positive.
+    """
+    return float(ant_cs + cos + midline_component + incisor_pos)
 
-def proposed_movement_svg(
+
+def compute_remaining_dolphin(initial: float, strip: float, expansion: float, distal: float, extraction: float, growth_space: float) -> tuple[float, float]:
+    """
+    Space gained rows are positive.
+    Remaining = initial + total_gained
+    """
+    gained = float(strip + expansion + distal + extraction + growth_space)
+    remaining = float(initial + gained)
+    return gained, remaining
+
+
+# -----------------------------
+# Step 1 SVG (Upper + Lower midlines; LOWER has dental + skeletal midline)
+# -----------------------------
+def initial_position_svg(
     r6: float,
-    r3: float,
-    inc: float,
-    l3: float,
     l6: float,
-    highlight: dict[str, bool] | None = None,
+    d: float,
+    s: float,
+    upper_midline_mm: float,
+    lower_dental_midline_mm: float,
+    lower_skeletal_midline_mm: float,
 ) -> str:
-    """
-    Dolphin-ish Step 3 diagram (lower arch simplified):
-    Teeth order: R6, R3, Incisor, L3, L6
-    Values are shown above (numbers) and arrows below.
-    Positive = move to patient's LEFT (screen right if you keep that convention consistent).
-    For now we just show direction by sign: >0 arrow right, <0 arrow left.
-    """
-    highlight = highlight or {}
-
-    W, H = 860, 420
+    W, H = 920, 560
     cx = W // 2
-    y_line = 210
 
-    # positions
+    # two baselines
+    y_upper = 205
+    y_lower = 355
+
+    scale = 18  # px/mm
+
+    # molar positions (simple schematic)
+    x_r6 = 150 + r6 * scale
+    x_l6 = W - 150 - l6 * scale
+
+    x_um = cx + upper_midline_mm * scale
+    x_ld = cx + lower_dental_midline_mm * scale
+    x_ls = cx + lower_skeletal_midline_mm * scale
+
+    def box(x, y, text):
+        return f"""
+        <rect x="{x-30}" y="{y-18}" width="60" height="36" rx="4"
+              fill="white" stroke="#999" stroke-width="2"/>
+        <text x="{x}" y="{y+6}" text-anchor="middle"
+              font-family="Arial" font-size="18" fill="#111">{text}</text>
+        """
+
+    def tooth(x, y, label, stroke="#333", stroke_w=2):
+        return f"""
+        <path d="M {x-18} {y-55}
+                 C {x-36} {y-40}, {x-36} {y-8}, {x-18} {y+10}
+                 C {x-10} {y+28}, {x+10} {y+28}, {x+18} {y+10}
+                 C {x+36} {y-8}, {x+36} {y-40}, {x+18} {y-55}
+                 Z"
+              fill="white" stroke="{stroke}" stroke-width="{stroke_w}"/>
+        <circle cx="{x}" cy="{y-18}" r="14" fill="white" stroke="{stroke}" stroke-width="{stroke_w}"/>
+        <text x="{x}" y="{y-13}" text-anchor="middle" font-family="Arial" font-size="14">{label}</text>
+        """
+
+    def midline_marker(x, y, color="#111", label=None):
+        lab = ""
+        if label:
+            lab = f"""<text x="{x}" y="{y-40}" text-anchor="middle" font-family="Arial" font-size="12" font-weight="700" fill="{color}">{label}</text>"""
+        return f"""
+        {lab}
+        <line x1="{x}" y1="{y-28}" x2="{x}" y2="{y+28}" stroke="{color}" stroke-width="3"/>
+        <circle cx="{x}" cy="{y}" r="6" fill="{color}"/>
+        """
+
+    html = f"""
+    <div style="border:1px solid rgba(49,51,63,.15); border-radius:14px; padding:12px; background:white;">
+      <svg width="100%" viewBox="0 0 {W} {H}" xmlns="http://www.w3.org/2000/svg">
+
+        <text x="{cx}" y="34" text-anchor="middle" font-family="Arial" font-size="24" font-weight="800">
+          Initial Position (Upper + Lower; Lower Dental + Skeletal Midline)
+        </text>
+
+        <!-- UPPER -->
+        <text x="70" y="{y_upper-20}" font-family="Arial" font-size="16" font-weight="700">Upper</text>
+        <line x1="90" y1="{y_upper}" x2="{W-90}" y2="{y_upper}" stroke="#333" stroke-width="4"/>
+        {tooth(x_r6, y_upper+55, "6")}
+        {tooth(x_um, y_upper+55, "1")}
+        {tooth(x_l6, y_upper+55, "6")}
+        {midline_marker(x_um, y_upper, color="#111", label="Upper dental")}
+
+        <!-- LOWER -->
+        <text x="70" y="{y_lower-20}" font-family="Arial" font-size="16" font-weight="700">Lower</text>
+        <line x1="90" y1="{y_lower}" x2="{W-90}" y2="{y_lower}" stroke="#333" stroke-width="4"/>
+        {tooth(x_r6, y_lower+55, "6")}
+        {tooth(x_ld, y_lower+55, "1")}
+        {tooth(x_l6, y_lower+55, "6")}
+        {midline_marker(x_ls, y_lower, color="#7a7a7a", label="Skeletal")}
+        {midline_marker(x_ld, y_lower, color="#111", label="Dental")}
+
+        <!-- Value boxes -->
+        <text x="160" y="78" font-family="Arial" font-size="16" font-weight="700">R6</text>
+        {box(160, 105, f"{r6:.1f}")}
+
+        <text x="{W-160}" y="78" font-family="Arial" font-size="16" font-weight="700" text-anchor="end">L6</text>
+        {box(W-160, 105, f"{l6:.1f}")}
+
+        <text x="{cx-26}" y="{H-110}" font-family="Arial" font-size="16" font-weight="700">D=</text>
+        {box(cx+30, H-115, f"{d:.1f}")}
+
+        <text x="{cx-26}" y="{H-62}" font-family="Arial" font-size="16" font-weight="700">S=</text>
+        {box(cx+30, H-67, f"{s:.1f}")}
+
+      </svg>
+    </div>
+    """
+    return html
+
+
+# -----------------------------
+# Step 3 SVG (TRUE Upper vs Lower rows)
+# -----------------------------
+def proposed_movement_svg_two_arch(
+    # Upper
+    u_r6: float, u_r3: float, u_inc: float, u_l3: float, u_l6: float,
+    # Lower
+    l_r6: float, l_r3: float, l_inc: float, l_l3: float, l_l6: float,
+) -> str:
+    W, H = 940, 600
+    cx = W // 2
+
+    y_upper = 220
+    y_lower = 410
+
     x_r6 = 120
-    x_r3 = 280
+    x_r3 = 300
     x_inc = cx
-    x_l3 = 580
-    x_l6 = 740
+    x_l3 = 640
+    x_l6 = 820
 
-    # helpers
-    def tooth(x, y, label, hl=False):
-        stroke = "#2aa6a6" if hl else "#333"
-        stroke_w = "3" if hl else "2"
+    def tooth(x, y, label):
         return f"""
         <path d="M {x-20} {y-70}
                  C {x-40} {y-50}, {x-40} {y-10}, {x-20} {y+10}
                  C {x-10} {y+35}, {x+10} {y+35}, {x+20} {y+10}
                  C {x+40} {y-10}, {x+40} {y-50}, {x+20} {y-70}
                  Z"
-              fill="white" stroke="{stroke}" stroke-width="{stroke_w}"/>
-        <circle cx="{x}" cy="{y-25}" r="16" fill="white" stroke="{stroke}" stroke-width="{stroke_w}"/>
+              fill="white" stroke="#333" stroke-width="2"/>
+        <circle cx="{x}" cy="{y-25}" r="16" fill="white" stroke="#333" stroke-width="2"/>
         <text x="{x}" y="{y-20}" text-anchor="middle" font-family="Arial" font-size="14">{label}</text>
         """
 
@@ -149,8 +246,6 @@ def proposed_movement_svg(
         """
 
     def arrow_under(x, y, val):
-        # draw a simple arrow under the tooth indicating direction/magnitude
-        # length scaled but capped for display
         L = max(18, min(90, abs(val) * 20))
         if val > 0:
             x1, x2 = x - 10, x - 10 + L
@@ -163,6 +258,42 @@ def proposed_movement_svg(
               stroke="#1f77b4" stroke-width="5" marker-end="url(#arrow)"/>
         """
 
+    def row(y_base, title, r6, r3, inc, l3, l6):
+        return f"""
+        <text x="70" y="{y_base-35}" font-family="Arial" font-size="16" font-weight="700">{title}</text>
+        <line x1="80" y1="{y_base}" x2="{W-80}" y2="{y_base}" stroke="#333" stroke-width="4"/>
+
+        {value_box(x_r6, y_base-120, r6)}
+        {value_box(x_r3, y_base-120, r3)}
+        {value_box(x_inc, y_base-120, inc)}
+        {value_box(x_l3, y_base-120, l3)}
+        {value_box(x_l6, y_base-120, l6)}
+
+        <text x="{x_r6}" y="{y_base-148}" text-anchor="middle" font-family="Arial" font-size="14" font-weight="700">R6</text>
+        <text x="{x_r3}" y="{y_base-148}" text-anchor="middle" font-family="Arial" font-size="14" font-weight="700">R3</text>
+        <text x="{x_inc}" y="{y_base-148}" text-anchor="middle" font-family="Arial" font-size="14" font-weight="700">Inc</text>
+        <text x="{x_l3}" y="{y_base-148}" text-anchor="middle" font-family="Arial" font-size="14" font-weight="700">L3</text>
+        <text x="{x_l6}" y="{y_base-148}" text-anchor="middle" font-family="Arial" font-size="14" font-weight="700">L6</text>
+
+        {tooth(x_r6, y_base+60, "6")}
+        {tooth(x_r3, y_base+60, "3")}
+        {tooth(x_inc, y_base+60, "1")}
+        {tooth(x_l3, y_base+60, "3")}
+        {tooth(x_l6, y_base+60, "6")}
+
+        {arrow_under(x_r6, y_base+150, r6)}
+        {arrow_under(x_r3, y_base+150, r3)}
+        {arrow_under(x_inc, y_base+150, inc)}
+        {arrow_under(x_l3, y_base+150, l3)}
+        {arrow_under(x_l6, y_base+150, l6)}
+
+        <text x="{x_r6}" y="{y_base+190}" text-anchor="middle" font-family="Arial" font-size="14">{r6:.1f}</text>
+        <text x="{x_r3}" y="{y_base+190}" text-anchor="middle" font-family="Arial" font-size="14">{r3:.1f}</text>
+        <text x="{x_inc}" y="{y_base+190}" text-anchor="middle" font-family="Arial" font-size="14">{inc:.1f}</text>
+        <text x="{x_l3}" y="{y_base+190}" text-anchor="middle" font-family="Arial" font-size="14">{l3:.1f}</text>
+        <text x="{x_l6}" y="{y_base+190}" text-anchor="middle" font-family="Arial" font-size="14">{l6:.1f}</text>
+        """
+
     html = f"""
     <div style="border:1px solid rgba(49,51,63,.15); border-radius:14px; padding:10px; background:white;">
       <svg width="100%" viewBox="0 0 {W} {H}" xmlns="http://www.w3.org/2000/svg">
@@ -172,562 +303,456 @@ def proposed_movement_svg(
           </marker>
         </defs>
 
-        <text x="{cx}" y="34" text-anchor="middle" font-family="Arial" font-size="22" font-weight="800">
-          Dental VTO (Proposed Dental Movement)
+        <text x="{cx}" y="36" text-anchor="middle" font-family="Arial" font-size="22" font-weight="800">
+          Dental VTO (Proposed Dental Movement) — Upper + Lower
         </text>
 
-        <!-- baseline -->
-        <line x1="80" y1="{y_line}" x2="{W-80}" y2="{y_line}" stroke="#333" stroke-width="4"/>
-
-        <!-- value boxes (top) -->
-        {value_box(x_r6, 90, r6)}
-        {value_box(x_r3, 90, r3)}
-        {value_box(x_inc, 90, inc)}
-        {value_box(x_l3, 90, l3)}
-        {value_box(x_l6, 90, l6)}
-
-        <!-- labels above boxes -->
-        <text x="{x_r6}" y="62" text-anchor="middle" font-family="Arial" font-size="14" font-weight="700">R6</text>
-        <text x="{x_r3}" y="62" text-anchor="middle" font-family="Arial" font-size="14" font-weight="700">R3</text>
-        <text x="{x_inc}" y="62" text-anchor="middle" font-family="Arial" font-size="14" font-weight="700">Inc</text>
-        <text x="{x_l3}" y="62" text-anchor="middle" font-family="Arial" font-size="14" font-weight="700">L3</text>
-        <text x="{x_l6}" y="62" text-anchor="middle" font-family="Arial" font-size="14" font-weight="700">L6</text>
-
-        <!-- teeth -->
-        {tooth(x_r6, y_line+60, "6", hl=highlight.get("R6", False))}
-        {tooth(x_r3, y_line+60, "3", hl=highlight.get("R3", False))}
-        {tooth(x_inc, y_line+60, "1", hl=highlight.get("Inc", False))}
-        {tooth(x_l3, y_line+60, "3", hl=highlight.get("L3", False))}
-        {tooth(x_l6, y_line+60, "6", hl=highlight.get("L6", False))}
-
-        <!-- arrows under -->
-        {arrow_under(x_r6, y_line+150, r6)}
-        {arrow_under(x_r3, y_line+150, r3)}
-        {arrow_under(x_inc, y_line+150, inc)}
-        {arrow_under(x_l3, y_line+150, l3)}
-        {arrow_under(x_l6, y_line+150, l6)}
-
-        <!-- numeric under arrows -->
-        <text x="{x_r6}" y="{y_line+190}" text-anchor="middle" font-family="Arial" font-size="14">{r6:.1f}</text>
-        <text x="{x_r3}" y="{y_line+190}" text-anchor="middle" font-family="Arial" font-size="14">{r3:.1f}</text>
-        <text x="{x_inc}" y="{y_line+190}" text-anchor="middle" font-family="Arial" font-size="14">{inc:.1f}</text>
-        <text x="{x_l3}" y="{y_line+190}" text-anchor="middle" font-family="Arial" font-size="14">{l3:.1f}</text>
-        <text x="{x_l6}" y="{y_line+190}" text-anchor="middle" font-family="Arial" font-size="14">{l6:.1f}</text>
-
-      </svg>
-    </div>
-    """
-    return html
-    
-def initial_position_svg(r6: float, l6: float, d: float, s: float, upper_midline_mm: float, lower_midline_mm: float) -> str:
-    W, H = 860, 520
-    cx = W // 2
-
-    # two baselines
-    y_upper = 190
-    y_lower = 310
-
-    scale = 18  # px/mm
-
-    # molar positions (same for both rows visually)
-    x_r6 = 140 + r6 * scale
-    x_l6 = W - 140 - l6 * scale
-
-    # midline positions
-    x_um = cx + upper_midline_mm * scale
-    x_lm = cx + lower_midline_mm * scale
-
-    def box(x, y, text):
-        return f"""
-        <rect x="{x-28}" y="{y-18}" width="56" height="36" rx="4"
-              fill="white" stroke="#999" stroke-width="2"/>
-        <text x="{x}" y="{y+6}" text-anchor="middle"
-              font-family="Arial" font-size="18" fill="#111">{text}</text>
-        """
-
-    def tooth(x, y, label, stroke="#333", stroke_w=2):
-        return f"""
-        <path d="M {x-18} {y-55}
-                 C {x-35} {y-40}, {x-35} {y-8}, {x-18} {y+10}
-                 C {x-10} {y+28}, {x+10} {y+28}, {x+18} {y+10}
-                 C {x+35} {y-8}, {x+35} {y-40}, {x+18} {y-55}
-                 Z"
-              fill="white" stroke="{stroke}" stroke-width="{stroke_w}"/>
-        <circle cx="{x}" cy="{y-18}" r="14" fill="white" stroke="{stroke}" stroke-width="{stroke_w}"/>
-        <text x="{x}" y="{y-13}" text-anchor="middle" font-family="Arial" font-size="14">{label}</text>
-        """
-
-    def midline_marker(x, y):
-        return f"""
-        <line x1="{x}" y1="{y-30}" x2="{x}" y2="{y+30}" stroke="#111" stroke-width="3"/>
-        <circle cx="{x}" cy="{y}" r="6" fill="#111"/>
-        """
-
-    html = f"""
-    <div style="border:1px solid rgba(49,51,63,.15); border-radius:14px; padding:12px; background:white;">
-      <svg width="100%" viewBox="0 0 {W} {H}" xmlns="http://www.w3.org/2000/svg">
-
-        <text x="{cx}" y="34" text-anchor="middle" font-family="Arial" font-size="24" font-weight="800">
-          Initial Position (Upper + Lower Midlines)
-        </text>
-
-        <!-- Upper baseline -->
-        <text x="70" y="{y_upper-20}" font-family="Arial" font-size="16" font-weight="700">Upper</text>
-        <line x1="90" y1="{y_upper}" x2="{W-90}" y2="{y_upper}" stroke="#333" stroke-width="4"/>
-        {tooth(x_r6, y_upper+55, "6")}
-        {tooth(x_um, y_upper+55, "1")}
-        {tooth(x_l6, y_upper+55, "6")}
-        {midline_marker(x_um, y_upper)}
-
-        <!-- Lower baseline -->
-        <text x="70" y="{y_lower-20}" font-family="Arial" font-size="16" font-weight="700">Lower</text>
-        <line x1="90" y1="{y_lower}" x2="{W-90}" y2="{y_lower}" stroke="#333" stroke-width="4"/>
-        {tooth(x_r6, y_lower+55, "6")}
-        {tooth(x_lm, y_lower+55, "1")}
-        {tooth(x_l6, y_lower+55, "6")}
-        {midline_marker(x_lm, y_lower)}
-
-        <!-- Value boxes (top like Dolphin) -->
-        <text x="150" y="78" font-family="Arial" font-size="16" font-weight="700">R6</text>
-        {box(150, 105, f"{r6:.1f}")}
-
-        <text x="{W-150}" y="78" font-family="Arial" font-size="16" font-weight="700" text-anchor="end">L6</text>
-        {box(W-150, 105, f"{l6:.1f}")}
-
-        <text x="{cx-20}" y="{H-90}" font-family="Arial" font-size="16" font-weight="700">D=</text>
-        {box(cx+30, H-95, f"{d:.1f}")}
-
-        <text x="{cx-20}" y="{H-40}" font-family="Arial" font-size="16" font-weight="700">S=</text>
-        {box(cx+30, H-45, f"{s:.1f}")}
-
+        {row(y_upper, "Upper", u_r6, u_r3, u_inc, u_l3, u_l6)}
+        {row(y_lower, "Lower", l_r6, l_r3, l_inc, l_l3, l_l6)}
       </svg>
     </div>
     """
     return html
 
 
-# =========================================================
-# Styling
-# =========================================================
-st.markdown(
+# -----------------------------
+# Movement allocator (MVP — replace later with McLaughlin rules)
+# -----------------------------
+def expected_movement_allocation(remaining: float, treat_to: str) -> dict[str, float]:
     """
-    <style>
-      .block-container {padding-top: 1.0rem; padding-bottom: 2rem;}
-      h1, h2, h3 {letter-spacing: -0.5px;}
-      .panel {
-        border: 1px solid rgba(49, 51, 63, 0.15);
-        border-radius: 14px;
-        padding: 16px 16px 12px 16px;
-        background: white;
-      }
-      .panel-title{
-        font-weight: 800;
-        font-size: 1.15rem;
-        margin-bottom: 10px;
-      }
-      .hint{
-        color: rgba(49, 51, 63, 0.65);
-        font-size: 0.9rem;
-      }
-      .band-blue   {background:#d9edf7; padding:10px; border-radius:10px; border:1px solid rgba(49,51,63,.08);}
-      .band-yellow {background:#f9f2d0; padding:10px; border-radius:10px; border:1px solid rgba(49,51,63,.08);}
-      .band-green  {background:#dff0d8; padding:10px; border-radius:10px; border:1px solid rgba(49,51,63,.08);}
-      .band-gray   {background:#f5f6f8; padding:10px; border-radius:10px; border:1px solid rgba(49,51,63,.08);}
-      div[data-baseweb="input"] > div {height: 42px;}
-      button[role="tab"] {font-weight: 700;}
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
+    remaining < 0 means still crowded (need space).
+    Allocates magnitude across segments (6, 3, inc).
+    """
+    if treat_to == "Class II":
+        ant_w, post_w = 0.65, 0.35
+    elif treat_to == "Class III":
+        ant_w, post_w = 0.45, 0.55
+    else:
+        ant_w, post_w = 0.55, 0.45
 
-st.title("Growth-aware Dental VTO (McLaughlin-inspired)")
-st.caption(
-    "Sign convention: Crowding is negative, spacing positive. Space gained rows are positive. Goal: Remaining Discrepancy ≈ 0."
-)
+    mag = abs(remaining)
+    anterior = mag * ant_w
+    posterior = mag * post_w
+    inc = anterior * 0.55
+    canine = anterior * 0.45
+    molar = posterior
+    return {"6": molar, "3": canine, "inc": inc}
 
 
-# =========================================================
-# Session state defaults
-# =========================================================
-def ss_init(key: str, default):
-    if key not in st.session_state:
-        st.session_state[key] = default
+def outward_sign(rem: float, side: str) -> float:
+    """
+    Defines outward direction in the diagram:
+      - Left side outward -> positive
+      - Right side outward -> negative
+    If rem < 0 (crowding remains): go outward.
+    If rem > 0 (excess space): go inward (reverse).
+    """
+    if rem == 0:
+        return 0.0
+    outward = 1.0 if side == "L" else -1.0
+    return outward if rem < 0 else -outward
 
 
-ss_init("move_both", True)
-ss_init("override", False)
+# -----------------------------
+# Defaults
+# -----------------------------
 ss_init("include_growth", True)
-ss_init("growth_space_total", 0.0)
 
+# Step 1: initial positions
+ss_init("r6_init", 0.0)
+ss_init("l6_init", 0.0)
+ss_init("d_init", 0.0)
+ss_init("s_init", 0.0)
+
+# Step 1 midlines
 ss_init("upper_midline_mm", 0.0)
-ss_init("lower_midline_mm", 0.0)
 
-# Step 3 defaults
-ss_init("treat_R", "Class II")
-ss_init("treat_L", "Class II")
+# LOWER ONLY: dental + skeletal midline
+ss_init("lower_dental_midline_mm", 0.0)
+ss_init("lower_skeletal_midline_mm", 0.0)
+
+# Growth inputs (space equivalent per arch total)
+ss_init("growth_upper_total", 0.0)
+ss_init("growth_lower_total", 0.0)
+
+# Store remaining discrepancies
+ss_init("remaining_U_R", 0.0)
+ss_init("remaining_U_L", 0.0)
+ss_init("remaining_L_R", 0.0)
+ss_init("remaining_L_L", 0.0)
 
 
-# =========================================================
-# Sidebar (GLOBAL controls)
-# =========================================================
+# -----------------------------
+# Sidebar
+# -----------------------------
 st.sidebar.markdown("## Global")
-st.sidebar.checkbox("Move both sides (R+L)", key="move_both")
-st.sidebar.checkbox("Override calculated values", key="override")
-st.sidebar.checkbox("Include growth contribution", key="include_growth", value=True)
+include_growth = st.sidebar.checkbox("Include growth (space equiv)", value=st.session_state["include_growth"], key="include_growth")
+st.sidebar.markdown("---")
+st.sidebar.markdown("<div class='hint'>Sign convention: <b>Crowding = negative</b>, spacing = positive. Space gained rows are positive. Goal: Remaining ≈ 0.</div>", unsafe_allow_html=True)
 
-move_both = st.session_state["move_both"]
-override = st.session_state["override"]
-include_growth = st.session_state["include_growth"]
+
+# -----------------------------
+# Header
+# -----------------------------
+st.markdown("# Growth-aware Dental VTO (McLaughlin-inspired)")
+st.markdown("<div class='small-muted'>Upper and lower arches calculated separately. Lower arch includes dental + skeletal midline; midline discrepancy numbers track with the lower dental midline.</div>", unsafe_allow_html=True)
+
+tabs = st.tabs(["Step 1: Initial Tooth Positions", "Step 2: Upper + Lower Arch Discrepancy", "Step 3: Determining Movement"])
 
 
 # =========================================================
-# 3-step workflow (tabs)
+# STEP 1
 # =========================================================
-step1, step2, step3 = st.tabs(
-    ["Step 1: Initial Tooth Positions", "Step 2: Lower Arch", "Step 3: Determining Movement"]
-)
-
-
-# ---------------------------------------------------------
-# STEP 1: Initial Tooth Positions
-# ---------------------------------------------------------
-with step1:
-    left, right = st.columns([1.05, 1.15], gap="large")
+with tabs[0]:
+    left, right = st.columns([1.0, 1.35], gap="large")
 
     with left:
-        st.markdown('<div class="panel"><div class="panel-title">Initial Position</div>', unsafe_allow_html=True)
+        st.markdown('<div class="panel"><div class="panel-title">Step 1 — Initial Tooth Positions</div>', unsafe_allow_html=True)
+        st.markdown(
+            "<div class='band-gray'>"
+            "<b>Purpose:</b> set initial molar positions and vertical factors (D and S). "
+            "<br><span class='hint'>Upper midline is dental. Lower has <b>both</b> dental and skeletal midline markers.</span>"
+            "</div>",
+            unsafe_allow_html=True
+        )
 
         c1, c2 = st.columns(2)
         with c1:
-            r6 = st.number_input("R6 (mm)", value=0.0, step=0.1, key="r6")
+            st.number_input("R6 (mm)", step=0.1, key="r6_init")
         with c2:
-            l6 = st.number_input("L6 (mm)", value=0.5, step=0.1, key="l6")
+            st.number_input("L6 (mm)", step=0.1, key="l6_init")
 
-        d = st.number_input("D (mm)", value=1.5, step=0.1, key="d")
-        s = st.number_input("S (mm)", value=0.0, step=0.1, key="s")
+        c3, c4 = st.columns(2)
+        with c3:
+            st.number_input("D (mm)", step=0.1, key="d_init")
+        with c4:
+            st.number_input("S (mm)", step=0.1, key="s_init")
 
-        st.markdown('<div class="band-blue"><b>Dental Midlines</b></div>', unsafe_allow_html=True)
+        st.markdown('<div class="band-blue">Midlines</div>', unsafe_allow_html=True)
+
+        st.number_input("Upper dental midline (mm)", step=0.1, key="upper_midline_mm")
+
         m1, m2 = st.columns(2)
         with m1:
-            upper_midline_mm = st.number_input("Upper midline (mm)", value=st.session_state["upper_midline_mm"], step=0.1, key="upper_midline_mm")
+            st.number_input("Lower dental midline (mm)", step=0.1, key="lower_dental_midline_mm")
         with m2:
-            lower_midline_mm = st.number_input("Lower midline (mm)", value=st.session_state["lower_midline_mm"], step=0.1, key="lower_midline_mm")
+            st.number_input("Lower skeletal midline (mm)", step=0.1, key="lower_skeletal_midline_mm")
 
-        st.divider()
-
-        st.markdown('<div class="panel-title">Growth Module (MVP)</div>', unsafe_allow_html=True)
-
-        if include_growth:
-            g1, g2, g3, g4 = st.columns(4)
-            with g1:
-                sex = st.selectbox("Sex", ["Female", "Male"], key="sex")
-            with g2:
-                cvm_stage = st.selectbox("CVM bucket", ["pre-peak", "peak", "post-peak"], key="cvm_stage")
-            with g3:
-                profile = st.selectbox("Growth profile", ["low", "avg", "high"], index=1, key="growth_profile")
-            with g4:
-                horizon = st.selectbox("Horizon (months)", [12, 18, 24], index=1, key="horizon")
-
-            coeff_imw = st.slider("IMW → perimeter coeff", 0.0, 1.5, 0.75, 0.05, key="coeff_imw")
-            coeff_icw = st.slider("ICW → perimeter coeff", 0.0, 1.5, 0.55, 0.05, key="coeff_icw")
-
-            delta_imw, delta_icw, growth_space_total = growth_space_equivalent_mm(
-                sex=sex,
-                cvm_stage=cvm_stage,
-                profile=profile,
-                horizon_months=horizon,
-                coeff_imw_to_perimeter=coeff_imw,
-                coeff_icw_to_perimeter=coeff_icw,
-            )
-            st.session_state["growth_space_total"] = growth_space_total
-
-            st.markdown(
-                f'<div class="band-gray"><b>Predicted growth over {horizon} months</b><br>'
-                f'ΔIMW = {delta_imw:.2f} mm<br>'
-                f'ΔICW = {delta_icw:.2f} mm<br>'
-                f'ΔArch perimeter (space equiv) = <b>+{growth_space_total:.2f} mm</b></div>',
-                unsafe_allow_html=True,
-            )
-        else:
-            st.session_state["growth_space_total"] = 0.0
-            st.markdown(
-                "<div class='band-gray'><b>Growth is OFF</b><br>"
-                "Enable <i>Include growth contribution</i> in the left sidebar to configure growth.</div>",
-                unsafe_allow_html=True,
-            )
-
+        st.markdown(
+            "<div class='band-gray'>"
+            "<b>Note:</b> In Step 2 (Lower arch), the Midline discrepancy row is automatically computed from "
+            "<b>Lower dental midline</b> so the numbers always track it."
+            "</div>",
+            unsafe_allow_html=True
+        )
         st.markdown("</div>", unsafe_allow_html=True)
 
     with right:
-        st.markdown('<div class="panel"><div class="panel-title">Initial Position</div>', unsafe_allow_html=True)
+        st.markdown('<div class="panel"><div class="panel-title">Visual Preview</div>', unsafe_allow_html=True)
 
-        svg_html = initial_position_svg(
-            r6=r6,
-            l6=l6,
-            d=d,
-            s=s,
-            upper_midline_mm=st.session_state["upper_midline_mm"],
-            lower_midline_mm=st.session_state["lower_midline_mm"],
+        svg = initial_position_svg(
+            r6=float(st.session_state["r6_init"]),
+            l6=float(st.session_state["l6_init"]),
+            d=float(st.session_state["d_init"]),
+            s=float(st.session_state["s_init"]),
+            upper_midline_mm=float(st.session_state["upper_midline_mm"]),
+            lower_dental_midline_mm=float(st.session_state["lower_dental_midline_mm"]),
+            lower_skeletal_midline_mm=float(st.session_state["lower_skeletal_midline_mm"]),
         )
-        components.html(svg_html, height=420, scrolling=False)
+        components.html(svg, height=620, scrolling=False)
 
+        delta_ml = float(st.session_state["lower_dental_midline_mm"]) - float(st.session_state["lower_skeletal_midline_mm"])
         st.markdown(
-            f"<div class='band-gray'><span class='hint'>Growth space equiv stored for Step 2/3: "
-            f"+{st.session_state['growth_space_total']:.2f} mm</span></div>",
-            unsafe_allow_html=True,
+            f"<div class='band-gray'><b>Lower midline delta (Dental − Skeletal):</b> {delta_ml:+.2f} mm</div>",
+            unsafe_allow_html=True
         )
-
         st.markdown("</div>", unsafe_allow_html=True)
 
 
-# ---------------------------------------------------------
-# STEP 2: Lower Arch
-# ---------------------------------------------------------
-with step2:
-    left, right = st.columns([1.15, 1.05], gap="large")
+# =========================================================
+# STEP 2
+# =========================================================
+with tabs[1]:
+    st.markdown('<div class="panel"><div class="panel-title">Step 2 — Discrepancy Calculations (Upper + Lower)</div>', unsafe_allow_html=True)
+    st.markdown(
+        "<div class='band-gray'>"
+        "<b>Separate calculations:</b> Upper and Lower arches are computed independently (Right + Left). "
+        "<br><span class='hint'>Lower Midline component is auto-derived from Step 1 lower dental midline.</span>"
+        "</div>",
+        unsafe_allow_html=True
+    )
 
-    with left:
-        st.markdown('<div class="panel"><div class="panel-title">Lower Arch Discrepancy</div>', unsafe_allow_html=True)
+    # Growth totals
+    st.markdown('<div class="band-green">Growth (space equivalent)</div>', unsafe_allow_html=True)
+    g1, g2 = st.columns(2)
+    with g1:
+        st.number_input("Upper growth space equiv total (mm)", step=0.1, key="growth_upper_total")
+    with g2:
+        st.number_input("Lower growth space equiv total (mm)", step=0.1, key="growth_lower_total")
 
-        st.markdown(
-            "<div class='band-gray'><b>Sign convention (Dolphin):</b> Crowding = negative, Spacing = positive. "
-            "Space gained rows (IPR/Expansion/Distalization/Extraction/Growth) = positive. Target Remaining ≈ 0.</div>",
-            unsafe_allow_html=True,
-        )
+    growth_label = "Growth (space equiv) [ON]" if include_growth else "Growth (space equiv) [OFF]"
+    growth_U_total = float(st.session_state["growth_upper_total"]) if include_growth else 0.0
+    growth_L_total = float(st.session_state["growth_lower_total"]) if include_growth else 0.0
 
-        st.markdown('<div class="band-blue"><b>Initial Discrepancy Inputs (3 to 3)</b></div>', unsafe_allow_html=True)
-        cA, cB = st.columns(2)
+    growth_U_R = growth_U_total / 2.0
+    growth_U_L = growth_U_total / 2.0
+    growth_L_R = growth_L_total / 2.0
+    growth_L_L = growth_L_total / 2.0
 
-        with cA:
-            st.markdown("**Right (3–3)**")
-            ant_R = st.number_input("Ant. Crowding/Spacing (R)", value=0.0, step=0.1, key="ant_R")
-            cos_R = st.number_input("Curve of Spee (R)", value=-1.5, step=0.1, key="cos_R")
-            mid_R = st.number_input("Midline component (R)", value=0.0, step=0.1, key="mid_R")
-            inc_R = st.number_input("Incisor position (R)", value=0.0, step=0.1, key="inc_R")
+    st.markdown("<hr/>", unsafe_allow_html=True)
 
-        with cB:
-            st.markdown("**Left (3–3)**")
-            ant_L = st.number_input("Ant. Crowding/Spacing (L)", value=0.0, step=0.1, key="ant_L")
-            cos_L = st.number_input("Curve of Spee (L)", value=-1.5, step=0.1, key="cos_L")
-            mid_L = st.number_input("Midline component (L)", value=0.0, step=0.1, key="mid_L")
-            inc_L = st.number_input("Incisor position (L)", value=0.0, step=0.1, key="inc_L")
+    # ---------- LOWER ARCH ----------
+    st.markdown("## Lower Arch Discrepancy")
 
-        st.markdown('<div class="band-green"><b>Space Gained</b> (treatment + growth)</div>', unsafe_allow_html=True)
-        cC, cD = st.columns(2)
+    # Lower midline component tracks lower dental midline
+    # Convention: Right midline component = +dental_midline, Left = -dental_midline (as in Dolphin screenshot style)
+    lower_dental_midline = float(st.session_state["lower_dental_midline_mm"])
+    midline_L_R = +lower_dental_midline
+    midline_L_L = -lower_dental_midline
 
-        with cC:
-            st.markdown("**Right**")
-            strip_R = st.number_input("Stripping/IPR (R)", value=0.0, step=0.1, key="strip_R")
-            exp_R = st.number_input("Expansion (treatment) (R)", value=0.0, step=0.1, key="exp_R")
-            dist_R = st.number_input("Distalizing 6–6 (R)", value=0.0, step=0.1, key="dist_R")
-            ext_R = st.number_input("Extraction space (R)", value=0.0, step=0.1, key="ext_R")
+    st.markdown('<div class="band-blue">Initial Discrepancy Inputs (Lower 3–3)</div>', unsafe_allow_html=True)
+    lA, lB = st.columns(2)
+    with lA:
+        st.markdown("**Lower Right (3–3)**")
+        L_ant_R = st.number_input("Ant. Crowding/Spacing (R)", value=0.0, step=0.1, key="L_ant_R")
+        L_cos_R = st.number_input("Curve of Spee (R)", value=0.0, step=0.1, key="L_cos_R")
+        st.number_input("Midline (R) — auto", value=midline_L_R, step=0.1, disabled=True, key="L_mid_R_auto")
+        L_inc_R = st.number_input("Incisor position (R)", value=0.0, step=0.1, key="L_inc_R")
 
-        with cD:
-            st.markdown("**Left**")
-            strip_L = st.number_input("Stripping/IPR (L)", value=0.0, step=0.1, key="strip_L")
-            exp_L = st.number_input("Expansion (treatment) (L)", value=0.0, step=0.1, key="exp_L")
-            dist_L = st.number_input("Distalizing 6–6 (L)", value=0.0, step=0.1, key="dist_L")
-            ext_L = st.number_input("Extraction space (L)", value=0.0, step=0.1, key="ext_L")
+    with lB:
+        st.markdown("**Lower Left (3–3)**")
+        L_ant_L = st.number_input("Ant. Crowding/Spacing (L)", value=0.0, step=0.1, key="L_ant_L")
+        L_cos_L = st.number_input("Curve of Spee (L)", value=0.0, step=0.1, key="L_cos_L")
+        st.number_input("Midline (L) — auto", value=midline_L_L, step=0.1, disabled=True, key="L_mid_L_auto")
+        L_inc_L = st.number_input("Incisor position (L)", value=0.0, step=0.1, key="L_inc_L")
 
-        # Growth is applied only if the global toggle is ON
-        growth_total_raw = float(st.session_state.get("growth_space_total", 0.0))
-        growth_total = growth_total_raw if include_growth else 0.0
+    st.markdown('<div class="band-green">Space Gained (Lower)</div>', unsafe_allow_html=True)
+    lC, lD = st.columns(2)
+    with lC:
+        st.markdown("**Lower Right**")
+        L_strip_R = st.number_input("Stripping/IPR (R)", value=0.0, step=0.1, key="L_strip_R")
+        L_exp_R = st.number_input("Expansion (treatment) (R)", value=0.0, step=0.1, key="L_exp_R")
+        L_dist_R = st.number_input("Distalizing 6–6 (R)", value=0.0, step=0.1, key="L_dist_R")
+        L_ext_R = st.number_input("Extraction space (R)", value=0.0, step=0.1, key="L_ext_R")
 
-        growth_R = growth_total / 2.0
-        growth_L = growth_total / 2.0
+    with lD:
+        st.markdown("**Lower Left**")
+        L_strip_L = st.number_input("Stripping/IPR (L)", value=0.0, step=0.1, key="L_strip_L")
+        L_exp_L = st.number_input("Expansion (treatment) (L)", value=0.0, step=0.1, key="L_exp_L")
+        L_dist_L = st.number_input("Distalizing 6–6 (L)", value=0.0, step=0.1, key="L_dist_L")
+        L_ext_L = st.number_input("Extraction space (L)", value=0.0, step=0.1, key="L_ext_L")
 
-        initial_R = compute_initial_discrepancy(ant_R, cos_R, mid_R, inc_R)
-        initial_L = compute_initial_discrepancy(ant_L, cos_L, mid_L, inc_L)
+    L_initial_R = compute_initial_discrepancy(L_ant_R, L_cos_R, midline_L_R, L_inc_R)
+    L_initial_L = compute_initial_discrepancy(L_ant_L, L_cos_L, midline_L_L, L_inc_L)
 
-        gained_R, remaining_R = compute_remaining_dolphin(initial_R, strip_R, exp_R, dist_R, ext_R, growth_R)
-        gained_L, remaining_L = compute_remaining_dolphin(initial_L, strip_L, exp_L, dist_L, ext_L, growth_L)
+    L_gained_R, L_remaining_R = compute_remaining_dolphin(L_initial_R, L_strip_R, L_exp_R, L_dist_R, L_ext_R, growth_L_R)
+    L_gained_L, L_remaining_L = compute_remaining_dolphin(L_initial_L, L_strip_L, L_exp_L, L_dist_L, L_ext_L, growth_L_L)
 
-        growth_label = "Growth (space equiv) [ON]" if include_growth else "Growth (space equiv) [OFF]"
+    st.session_state["remaining_L_R"] = float(L_remaining_R)
+    st.session_state["remaining_L_L"] = float(L_remaining_L)
 
-        st.markdown('<div class="band-yellow"><b>Totals</b></div>', unsafe_allow_html=True)
-        totals = pd.DataFrame(
-            [
-                ["Initial Discrepancy", initial_R, initial_L],
-                ["Treatment Gained", strip_R + exp_R + dist_R + ext_R, strip_L + exp_L + dist_L + ext_L],
-                [growth_label, growth_R, growth_L],
-                ["Total Gained", gained_R, gained_L],
-                ["Remaining Discrepancy", remaining_R, remaining_L],
-            ],
-            columns=["Component", "R (mm)", "L (mm)"],
-        )
-        st.dataframe(totals, use_container_width=True, hide_index=True)
+    lower_table = pd.DataFrame(
+        [
+            ["Ant. Crowding/Spacing", L_ant_R, L_ant_L],
+            ["Curve of Spee", L_cos_R, L_cos_L],
+            ["Midline (tracks Lower dental midline)", midline_L_R, midline_L_L],
+            ["Incisor position", L_inc_R, L_inc_L],
+            ["Initial Discrepancy", L_initial_R, L_initial_L],
+            ["Stripping/IPR", L_strip_R, L_strip_L],
+            ["Expansion (treatment)", L_exp_R, L_exp_L],
+            ["Distalizing 6–6", L_dist_R, L_dist_L],
+            ["Extraction space", L_ext_R, L_ext_L],
+            [growth_label, growth_L_R, growth_L_L],
+            ["Total Gained", L_gained_R, L_gained_L],
+            ["Remaining Discrepancy", L_remaining_R, L_remaining_L],
+        ],
+        columns=["Lower (Component)", "R (mm)", "L (mm)"],
+    )
+    st.dataframe(lower_table, use_container_width=True, hide_index=True)
 
-        st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown(
+        f"<div class='band-gray'><b>Lower status:</b> Right {L_remaining_R:+.2f} ({remaining_status(L_remaining_R)}), "
+        f"Left {L_remaining_L:+.2f} ({remaining_status(L_remaining_L)})</div>",
+        unsafe_allow_html=True
+    )
 
-    with right:
-        st.markdown('<div class="panel"><div class="panel-title">Dental VTO (Preview)</div>', unsafe_allow_html=True)
-        st.caption("Next iteration: render Step 2 preview diagram (tooth line + arrows).")
-        st.markdown(
-            f"""
-            <div class="band-gray">
-              <b>Remaining Discrepancy</b><br>
-              Right: <b>{remaining_R:.2f} mm</b> &nbsp; <span class="hint">({remaining_status(remaining_R)})</span><br>
-              Left: <b>{remaining_L:.2f} mm</b> &nbsp; <span class="hint">({remaining_status(remaining_L)})</span><br><br>
-              <span class="hint">{growth_label}: +{growth_total:.2f} mm total perimeter-equivalent</span>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown("<hr/>", unsafe_allow_html=True)
 
-st.session_state["remaining_R"] = remaining_R
-st.session_state["remaining_L"] = remaining_L
+    # ---------- UPPER ARCH ----------
+    st.markdown("## Upper Arch Discrepancy")
+    st.markdown('<div class="band-blue">Initial Discrepancy Inputs (Upper 3–3)</div>', unsafe_allow_html=True)
 
-# ---------------------------------------------------------
-# STEP 3: Determining Movement
-# ---------------------------------------------------------
-with step3:
+    uA, uB = st.columns(2)
+    with uA:
+        st.markdown("**Upper Right (3–3)**")
+        U_ant_R = st.number_input("U Ant. Crowding/Spacing (R)", value=0.0, step=0.1, key="U_ant_R")
+        U_cos_R = st.number_input("U Curve of Spee (R)", value=0.0, step=0.1, key="U_cos_R")
+        U_mid_R = st.number_input("U Midline component (R)", value=0.0, step=0.1, key="U_mid_R")
+        U_inc_R = st.number_input("U Incisor position (R)", value=0.0, step=0.1, key="U_inc_R")
+
+    with uB:
+        st.markdown("**Upper Left (3–3)**")
+        U_ant_L = st.number_input("U Ant. Crowding/Spacing (L)", value=0.0, step=0.1, key="U_ant_L")
+        U_cos_L = st.number_input("U Curve of Spee (L)", value=0.0, step=0.1, key="U_cos_L")
+        U_mid_L = st.number_input("U Midline component (L)", value=0.0, step=0.1, key="U_mid_L")
+        U_inc_L = st.number_input("U Incisor position (L)", value=0.0, step=0.1, key="U_inc_L")
+
+    st.markdown('<div class="band-green">Space Gained (Upper)</div>', unsafe_allow_html=True)
+
+    uC, uD = st.columns(2)
+    with uC:
+        st.markdown("**Upper Right**")
+        U_strip_R = st.number_input("U Stripping/IPR (R)", value=0.0, step=0.1, key="U_strip_R")
+        U_exp_R = st.number_input("U Expansion (treatment) (R)", value=0.0, step=0.1, key="U_exp_R")
+        U_dist_R = st.number_input("U Distalizing 6–6 (R)", value=0.0, step=0.1, key="U_dist_R")
+        U_ext_R = st.number_input("U Extraction space (R)", value=0.0, step=0.1, key="U_ext_R")
+
+    with uD:
+        st.markdown("**Upper Left**")
+        U_strip_L = st.number_input("U Stripping/IPR (L)", value=0.0, step=0.1, key="U_strip_L")
+        U_exp_L = st.number_input("U Expansion (treatment) (L)", value=0.0, step=0.1, key="U_exp_L")
+        U_dist_L = st.number_input("U Distalizing 6–6 (L)", value=0.0, step=0.1, key="U_dist_L")
+        U_ext_L = st.number_input("U Extraction space (L)", value=0.0, step=0.1, key="U_ext_L")
+
+    U_initial_R = compute_initial_discrepancy(U_ant_R, U_cos_R, U_mid_R, U_inc_R)
+    U_initial_L = compute_initial_discrepancy(U_ant_L, U_cos_L, U_mid_L, U_inc_L)
+
+    U_gained_R, U_remaining_R = compute_remaining_dolphin(U_initial_R, U_strip_R, U_exp_R, U_dist_R, U_ext_R, growth_U_R)
+    U_gained_L, U_remaining_L = compute_remaining_dolphin(U_initial_L, U_strip_L, U_exp_L, U_dist_L, U_ext_L, growth_U_L)
+
+    st.session_state["remaining_U_R"] = float(U_remaining_R)
+    st.session_state["remaining_U_L"] = float(U_remaining_L)
+
+    upper_table = pd.DataFrame(
+        [
+            ["Ant. Crowding/Spacing", U_ant_R, U_ant_L],
+            ["Curve of Spee", U_cos_R, U_cos_L],
+            ["Midline component", U_mid_R, U_mid_L],
+            ["Incisor position", U_inc_R, U_inc_L],
+            ["Initial Discrepancy", U_initial_R, U_initial_L],
+            ["Stripping/IPR", U_strip_R, U_strip_L],
+            ["Expansion (treatment)", U_exp_R, U_exp_L],
+            ["Distalizing 6–6", U_dist_R, U_dist_L],
+            ["Extraction space", U_ext_R, U_ext_L],
+            [growth_label, growth_U_R, growth_U_L],
+            ["Total Gained", U_gained_R, U_gained_L],
+            ["Remaining Discrepancy", U_remaining_R, U_remaining_L],
+        ],
+        columns=["Upper (Component)", "R (mm)", "L (mm)"],
+    )
+    st.dataframe(upper_table, use_container_width=True, hide_index=True)
+
+    st.markdown(
+        f"<div class='band-gray'><b>Upper status:</b> Right {U_remaining_R:+.2f} ({remaining_status(U_remaining_R)}), "
+        f"Left {U_remaining_L:+.2f} ({remaining_status(U_remaining_L)})</div>",
+        unsafe_allow_html=True
+    )
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
+# =========================================================
+# STEP 3
+# =========================================================
+with tabs[2]:
     left, right = st.columns([1.0, 1.35], gap="large")
 
-    # --- A simple, explicit allocator (MVP) ---
-    # We take remaining discrepancy (mm) and allocate across:
-    #  - molars (6), canines (3), incisors (1 segment)
-    # Treat-to influences the ratio anterior/posterior.
-    def expected_movement_allocation(remaining: float, treat_to: str) -> dict[str, float]:
-        """
-        remaining < 0 means still crowded (need space) in Dolphin convention.
-        For the *movement diagram*, we express a "plan" as numbers per segment.
-        This is MVP math — you’ll replace with McLaughlin rules later.
-
-        Convention here:
-          - Positive value = movement to patient's LEFT
-          - Negative value = movement to patient's RIGHT
-        (You can flip if you want — just be consistent.)
-        """
-        # How much of the "plan" is anterior vs posterior
-        if treat_to == "Class II":
-            # more posterior correction (distalize post / anchor anterior)
-            ant_w, post_w = 0.65, 0.35
-        elif treat_to == "Class III":
-            ant_w, post_w = 0.45, 0.55
-        else:  # Class I
-            ant_w, post_w = 0.55, 0.45
-
-        # Use magnitude; sign will be handled as directional plan per side later
-        mag = abs(remaining)
-
-        anterior = mag * ant_w
-        posterior = mag * post_w
-
-        # Split anterior into canine/incisor
-        inc = anterior * 0.55
-        canine = anterior * 0.45
-
-        # Posterior all to molar for MVP
-        molar = posterior
-
-        return {"6": molar, "3": canine, "inc": inc}
+    # Pull stored remaining
+    remU_R = float(st.session_state["remaining_U_R"])
+    remU_L = float(st.session_state["remaining_U_L"])
+    remL_R = float(st.session_state["remaining_L_R"])
+    remL_L = float(st.session_state["remaining_L_L"])
 
     with left:
-        st.markdown('<div class="panel"><div class="panel-title">Treat to</div>', unsafe_allow_html=True)
+        st.markdown('<div class="panel"><div class="panel-title">Step 3 — Determine Expected Movement</div>', unsafe_allow_html=True)
+        st.markdown(
+            "<div class='band-gray'>"
+            "<b>MVP allocator:</b> This computes a plausible movement distribution across 6 / 3 / incisors from remaining discrepancy. "
+            "We will replace this later with McLaughlin/Dolphin rules. "
+            "<br><span class='hint'>Upper and Lower are computed separately from their own remaining discrepancies.</span>"
+            "</div>",
+            unsafe_allow_html=True
+        )
 
-        treat_right = st.radio("Right side", ["Class I", "Class II", "Class III"], index=1, horizontal=True, key="treat_R")
-        treat_left = st.radio("Left side", ["Class I", "Class II", "Class III"], index=1, horizontal=True, key="treat_L")
+        st.markdown('<div class="band-blue">Treat-to (Upper)</div>', unsafe_allow_html=True)
+        u1, u2 = st.columns(2)
+        with u1:
+            treat_U_R = st.radio("Upper Right", ["Class I", "Class II", "Class III"], index=1, horizontal=True, key="treat_U_R")
+        with u2:
+            treat_U_L = st.radio("Upper Left", ["Class I", "Class II", "Class III"], index=1, horizontal=True, key="treat_U_L")
+
+        st.markdown('<div class="band-blue">Treat-to (Lower)</div>', unsafe_allow_html=True)
+        l1, l2 = st.columns(2)
+        with l1:
+            treat_L_R = st.radio("Lower Right", ["Class I", "Class II", "Class III"], index=1, horizontal=True, key="treat_L_R")
+        with l2:
+            treat_L_L = st.radio("Lower Left", ["Class I", "Class II", "Class III"], index=1, horizontal=True, key="treat_L_L")
 
         st.markdown(
-            "<div class='band-gray'><b>About this step</b><br>"
-            "This panel computes an <i>expected movement</i> plan from Step 2 remaining discrepancy, "
-            "then renders a Dolphin-style diagram. Turn on <b>Override calculated values</b> (sidebar) "
-            "to manually edit segment movements.</div>",
-            unsafe_allow_html=True,
+            f"<div class='band-gray'><b>Inputs from Step 2</b><br>"
+            f"Upper remaining: R {remU_R:+.2f}, L {remU_L:+.2f}<br>"
+            f"Lower remaining: R {remL_R:+.2f}, L {remL_L:+.2f}</div>",
+            unsafe_allow_html=True
         )
         st.markdown("</div>", unsafe_allow_html=True)
 
     with right:
-        st.markdown('<div class="panel"><div class="panel-title">Dental VTO (Proposed Dental Movement)</div>', unsafe_allow_html=True)
+        st.markdown('<div class="panel"><div class="panel-title">Dolphin-style Diagram (Upper + Lower)</div>', unsafe_allow_html=True)
 
-        # Pull latest remaining discrepancies computed in Step 2
-        # (These names exist in the full file I gave you; if not, compute again or store in session_state.)
-        remR = float(st.session_state.get("remaining_R", remaining_R if "remaining_R" in globals() else 0.0))
-        remL = float(st.session_state.get("remaining_L", remaining_L if "remaining_L" in globals() else 0.0))
+        # Allocate per side per arch
+        planU_R = expected_movement_allocation(remU_R, treat_U_R)
+        planU_L = expected_movement_allocation(remU_L, treat_U_L)
+        planL_R = expected_movement_allocation(remL_R, treat_L_R)
+        planL_L = expected_movement_allocation(remL_L, treat_L_L)
 
-        # Compute expected movement magnitudes per side
-        planR = expected_movement_allocation(remR, treat_right)
-        planL = expected_movement_allocation(remL, treat_left)
+        # Convert to signed movements (outward when crowding remains)
+        signU_R = outward_sign(remU_R, "R")
+        signU_L = outward_sign(remU_L, "L")
+        signL_R = outward_sign(remL_R, "R")
+        signL_L = outward_sign(remL_L, "L")
 
-        # Convert to signed movements for the diagram:
-        # Here’s a simple interpretation:
-        # - Right side movements shown as "to the RIGHT" (negative) if we need space (rem<0),
-        # - Left side movements shown as "to the LEFT" (positive) if we need space (rem<0).
-        # That mirrors “expand outward” visually.
-        # If rem > 0 (excess space), reverse the direction.
-        def dir_sign(rem: float, outward_positive: bool) -> float:
-            # If still crowded (rem < 0), go outward; if excess (rem > 0), go inward.
-            if rem < 0:
-                return 1.0 if outward_positive else -1.0
-            if rem > 0:
-                return -1.0 if outward_positive else 1.0
-            return 0.0
+        # Upper segments
+        U_R6 = signU_R * planU_R["6"]
+        U_R3 = signU_R * planU_R["3"]
+        U_Inc = (signU_R + signU_L) / 2.0 * ((planU_R["inc"] + planU_L["inc"]) / 2.0)
+        U_L3 = signU_L * planU_L["3"]
+        U_L6 = signU_L * planU_L["6"]
 
-        # Right outward is to patient's RIGHT => negative in our screen convention
-        sign_R = dir_sign(remR, outward_positive=False)
-        # Left outward is to patient's LEFT => positive
-        sign_L = dir_sign(remL, outward_positive=True)
+        # Lower segments
+        L_R6 = signL_R * planL_R["6"]
+        L_R3 = signL_R * planL_R["3"]
+        L_Inc = (signL_R + signL_L) / 2.0 * ((planL_R["inc"] + planL_L["inc"]) / 2.0)
+        L_L3 = signL_L * planL_L["3"]
+        L_L6 = signL_L * planL_L["6"]
 
-        # Expected values for each segment
-        exp_R6 = sign_R * planR["6"]
-        exp_R3 = sign_R * planR["3"]
-        exp_Inc = (sign_R + sign_L) / 2.0 * ((planR["inc"] + planL["inc"]) / 2.0)  # center segment
-        exp_L3 = sign_L * planL["3"]
-        exp_L6 = sign_L * planL["6"]
-
-        # Allow override (global sidebar toggle)
-        if override:
-            c1, c2, c3, c4, c5 = st.columns(5)
-            with c1:
-                exp_R6 = st.number_input("R6", value=float(exp_R6), step=0.1, key="mv_R6")
-            with c2:
-                exp_R3 = st.number_input("R3", value=float(exp_R3), step=0.1, key="mv_R3")
-            with c3:
-                exp_Inc = st.number_input("Inc", value=float(exp_Inc), step=0.1, key="mv_Inc")
-            with c4:
-                exp_L3 = st.number_input("L3", value=float(exp_L3), step=0.1, key="mv_L3")
-            with c5:
-                exp_L6 = st.number_input("L6", value=float(exp_L6), step=0.1, key="mv_L6")
-        else:
-            # show computed values in a small table (like Dolphin “calculated values”)
-            df = pd.DataFrame(
-                [["R6", exp_R6], ["R3", exp_R3], ["Inc", exp_Inc], ["L3", exp_L3], ["L6", exp_L6]],
-                columns=["Segment", "Expected movement (mm)"],
-            )
-            st.dataframe(df, use_container_width=True, hide_index=True)
-
-        # Highlight teeth that move more than a threshold
-        hl = {
-            "R6": abs(exp_R6) >= 0.5,
-            "R3": abs(exp_R3) >= 0.5,
-            "Inc": abs(exp_Inc) >= 0.5,
-            "L3": abs(exp_L3) >= 0.5,
-            "L6": abs(exp_L6) >= 0.5,
-        }
-
-        # Render Dolphin-like diagram
-        svg = proposed_movement_svg(
-            r6=exp_R6,
-            r3=exp_R3,
-            inc=exp_Inc,
-            l3=exp_L3,
-            l6=exp_L6,
-            highlight=hl,
+        svg = proposed_movement_svg_two_arch(
+            u_r6=U_R6, u_r3=U_R3, u_inc=U_Inc, u_l3=U_L3, u_l6=U_L6,
+            l_r6=L_R6, l_r3=L_R3, l_inc=L_Inc, l_l3=L_L3, l_l6=L_L6,
         )
-        components.html(svg, height=520, scrolling=False)
+        components.html(svg, height=700, scrolling=False)
 
-        # Goal check (keep your existing)
+        # Tables for transparency
+        dfU = pd.DataFrame(
+            [["R6", U_R6], ["R3", U_R3], ["Inc", U_Inc], ["L3", U_L3], ["L6", U_L6]],
+            columns=["Upper segment", "Expected movement (mm)"],
+        )
+        dfL = pd.DataFrame(
+            [["R6", L_R6], ["R3", L_R3], ["Inc", L_Inc], ["L3", L_L3], ["L6", L_L6]],
+            columns=["Lower segment", "Expected movement (mm)"],
+        )
+
+        t1, t2 = st.columns(2)
+        with t1:
+            st.dataframe(dfU, use_container_width=True, hide_index=True)
+        with t2:
+            st.dataframe(dfL, use_container_width=True, hide_index=True)
+
         st.markdown(
-            f"""
-            <div class="band-gray">
-              <b>Goal check</b><br>
-              Right remaining: <b>{remR:.2f}</b> ({remaining_status(remR)})<br>
-              Left remaining: <b>{remL:.2f}</b> ({remaining_status(remL)})<br>
-              <span class="hint">Tip: Turn on Override calculated values to edit the movement plan.</span>
-            </div>
-            """,
-            unsafe_allow_html=True,
+            f"<div class='band-gray'><b>Goal check</b><br>"
+            f"Upper remaining: R {remU_R:+.2f} ({remaining_status(remU_R)}), L {remU_L:+.2f} ({remaining_status(remU_L)})<br>"
+            f"Lower remaining: R {remL_R:+.2f} ({remaining_status(remL_R)}), L {remL_L:+.2f} ({remaining_status(remL_L)})"
+            f"</div>",
+            unsafe_allow_html=True
         )
 
         st.markdown("</div>", unsafe_allow_html=True)
