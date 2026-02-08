@@ -133,6 +133,12 @@ def ss_init(key, default):
     if key not in st.session_state:
         st.session_state[key] = default
 
+st.sidebar.markdown("## Global")
+st.sidebar.checkbox("Move both sides (R+L)", key="move_both")
+st.sidebar.checkbox("Override calculated values", key="override")
+
+move_both = st.session_state["move_both"]
+override = st.session_state["override"]
 
 ss_init("move_both", True)
 ss_init("override", False)
@@ -160,8 +166,6 @@ with step1:
 
     with left:
         st.markdown('<div class="panel"><div class="panel-title">Initial Position</div>', unsafe_allow_html=True)
-
-        st.checkbox("Move both sides (R+L)", key="move_both")
 
         c1, c2, c3 = st.columns([1, 1, 1])
         with c1:
@@ -235,8 +239,6 @@ with step2:
 
     with left:
         st.markdown('<div class="panel"><div class="panel-title">Lower Arch Discrepancy</div>', unsafe_allow_html=True)
-
-        st.checkbox("Move both sides (R+L)", key="move_both")
 
         st.markdown(
             "<div class='band-gray'><b>Sign convention (Dolphin):</b> Crowding = negative, Spacing = positive. "
@@ -330,9 +332,6 @@ with step3:
 
     with left:
         st.markdown('<div class="panel"><div class="panel-title">Treat to</div>', unsafe_allow_html=True)
-
-        st.checkbox("Move both sides (R+L)", key="move_both")
-        st.checkbox("Override calculated values", key="override")
 
         st.markdown("**Right**")
         treat_right = st.radio("Right side", ["Class I", "Class II", "Class III"], index=1, horizontal=True, key="treat_R")
