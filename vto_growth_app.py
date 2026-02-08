@@ -674,36 +674,29 @@ with tabs[2]:
             unsafe_allow_html=True
         )
 
-        st.markdown('<div class="band-blue">Treat-to (Upper)</div>', unsafe_allow_html=True)
-        u1, u2 = st.columns(2)
-        with u1:
-            treat_U_R = st.radio("Upper Right", ["Class I", "Class II", "Class III"], index=1, horizontal=True, key="treat_U_R")
-        with u2:
-            treat_U_L = st.radio("Upper Left", ["Class I", "Class II", "Class III"], index=1, horizontal=True, key="treat_U_L")
+        st.markdown('<div class="band-blue">Treat-to (Case-level)</div>', unsafe_allow_html=True)
 
-        st.markdown('<div class="band-blue">Treat-to (Lower)</div>', unsafe_allow_html=True)
-        l1, l2 = st.columns(2)
-        with l1:
-            treat_L_R = st.radio("Lower Right", ["Class I", "Class II", "Class III"], index=1, horizontal=True, key="treat_L_R")
-        with l2:
-            treat_L_L = st.radio("Lower Left", ["Class I", "Class II", "Class III"], index=1, horizontal=True, key="treat_L_L")
-
-        st.markdown(
-            f"<div class='band-gray'><b>Inputs from Step 2</b><br>"
-            f"Upper remaining: R {remU_R:+.2f}, L {remU_L:+.2f}<br>"
-            f"Lower remaining: R {remL_R:+.2f}, L {remL_L:+.2f}</div>",
-            unsafe_allow_html=True
-        )
-        st.markdown("</div>", unsafe_allow_html=True)
+        allow_asym = st.checkbox("Allow asymmetry (different Right vs Left)", value=False, key="allow_asym")
+        
+        if not allow_asym:
+            treat_case = st.radio("Treat to", ["Class I", "Class II", "Class III"], index=1, horizontal=True, key="treat_case")
+            treat_R = treat_case
+            treat_L = treat_case
+        else:
+            c1, c2 = st.columns(2)
+            with c1:
+                treat_R = st.radio("Right", ["Class I", "Class II", "Class III"], index=1, horizontal=True, key="treat_case_R")
+            with c2:
+                treat_L = st.radio("Left", ["Class I", "Class II", "Class III"], index=1, horizontal=True, key="treat_case_L")
 
     with right:
         st.markdown('<div class="panel"><div class="panel-title">Dolphin-style Diagram (Upper + Lower)</div>', unsafe_allow_html=True)
 
         # Allocate per side per arch
-        planU_R = expected_movement_allocation(remU_R, treat_U_R)
-        planU_L = expected_movement_allocation(remU_L, treat_U_L)
-        planL_R = expected_movement_allocation(remL_R, treat_L_R)
-        planL_L = expected_movement_allocation(remL_L, treat_L_L)
+        planU_R = expected_movement_allocation(remU_R, treat_R)
+        planU_L = expected_movement_allocation(remU_L, treat_L)
+        planL_R = expected_movement_allocation(remL_R, treat_R)
+        planL_L = expected_movement_allocation(remL_L, treat_L)
 
         # Convert to signed movements (outward when crowding remains)
         signU_R = outward_sign(remU_R, "R")
