@@ -125,6 +125,105 @@ st.title("Growth-aware Dental VTO (McLaughlin-inspired)")
 st.caption("Sign convention: Crowding is negative, spacing positive. Space gained rows are positive. Goal: Remaining Discrepancy ≈ 0.")
 
 
+## Graphics
+def initial_position_svg(r6: float, midline: float, l6: float, d: float, s: float) -> str:
+    # Simple, Dolphin-inspired “line + landmarks” SVG.
+    # You can swap in more detailed tooth drawings later.
+    # Coordinates in pixels
+    W, H = 760, 360
+    cx = W // 2
+    y_line = 190
+
+    # Map mm to pixels for arrow displacement (tweak scale)
+    scale = 18  # px per mm
+    r6_px = r6 * scale
+    l6_px = l6 * scale
+    mid_px = midline * scale
+
+    # Positions
+    x_r6 = 140 + r6_px
+    x_l6 = W - 140 - l6_px
+    x_mid = cx + mid_px
+
+    # Arrows
+    def arrow(x1, x2, y, color="#1f77b4"):
+        # marker-end arrow
+        return f"""
+        <line x1="{x1}" y1="{y}" x2="{x2}" y2="{y}"
+              stroke="{color}" stroke-width="4" marker-end="url(#arrow)"/>
+        """
+
+    # Boxed number input look
+    def box(x, y, text):
+        return f"""
+        <rect x="{x-28}" y="{y-18}" width="56" height="36" rx="4"
+              fill="white" stroke="#999" stroke-width="2"/>
+        <text x="{x}" y="{y+6}" text-anchor="middle"
+              font-family="Arial" font-size="18" fill="#111">{text}</text>
+        """
+
+    # Tooth-ish placeholders (replace with real tooth outlines later)
+    def tooth(x, y, label):
+        return f"""
+        <path d="M {x-18} {y-50}
+                 C {x-35} {y-35}, {x-35} {y-5}, {x-18} {y+10}
+                 C {x-10} {y+25}, {x+10} {y+25}, {x+18} {y+10}
+                 C {x+35} {y-5}, {x+35} {y-35}, {x+18} {y-50}
+                 Z"
+              fill="white" stroke="#333" stroke-width="2"/>
+        <circle cx="{x}" cy="{y-12}" r="14" fill="white" stroke="#333" stroke-width="2"/>
+        <text x="{x}" y="{y-7}" text-anchor="middle" font-family="Arial" font-size="14">{label}</text>
+        """
+
+    svg = f"""
+    <div style="border:1px solid rgba(49,51,63,.15); border-radius:10px; padding:10px; background:white;">
+    <svg width="100%" viewBox="0 0 {W} {H}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L9,3 z" fill="#1f77b4"/>
+        </marker>
+      </defs>
+
+      <text x="{cx}" y="30" text-anchor="middle" font-family="Arial" font-size="22" font-weight="700">Initial Position</text>
+
+      <!-- Axis line -->
+      <line x1="80" y1="{y_line}" x2="{W-80}" y2="{y_line}" stroke="#333" stroke-width="4"/>
+      <line x1="{cx-160}" y1="{y_line-10}" x2="{cx-160}" y2="{y_line+10}" stroke="#333" stroke-width="3"/>
+      <line x1="{cx+160}" y1="{y_line-10}" x2="{cx+160}" y2="{y_line+10}" stroke="#333" stroke-width="3"/>
+
+      <!-- Teeth placeholders -->
+      {tooth(x_r6, y_line+35, "6")}
+      {tooth(x_mid, y_line+35, "1")}
+      {tooth(x_mid+35, y_line+35, "1")}
+      {tooth(x_l6, y_line+35, "6")}
+
+      <!-- Value boxes -->
+      <text x="140" y="70" font-family="Arial" font-size="16" font-weight="700">R6</text>
+      {box(150, 95, f"{r6:.1f}")}
+
+      <text x="{cx}" y="70" font-family="Arial" font-size="16" font-weight="700" text-anchor="middle">Midline</text>
+      {box(cx, 95, f"{midline:.1f}")}
+
+      <text x="{W-140}" y="70" font-family="Arial" font-size="16" font-weight="700" text-anchor="end">L6</text>
+      {box(W-150, 95, f"{l6:.1f}")}
+
+      <!-- Arrows (illustrative) -->
+      {arrow(120, x_r6-30, 125)}
+      {arrow(W-120, x_l6+30, 125)}
+      {arrow(cx, x_mid, y_line+95)}
+
+      <!-- D and S boxes -->
+      <text x="{cx-20}" y="{y_line+150}" font-family="Arial" font-size="16" font-weight="700">D=</text>
+      {box(cx+30, y_line+145, f"{d:.1f}")}
+
+      <text x="{cx-20}" y="{y_line+210}" font-family="Arial" font-size="16" font-weight="700">S=</text>
+      {box(cx+30, y_line+205, f"{s:.1f}")}
+
+    </svg>
+    </div>
+    """
+    return svg
+
 # =========================================================
 # 4) Session state defaults
 # =========================================================
@@ -215,21 +314,21 @@ with step1:
 
         st.markdown("</div>", unsafe_allow_html=True)
 
-    with right:
-        st.markdown('<div class="panel"><div class="panel-title">Visual Preview (placeholder)</div>', unsafe_allow_html=True)
-        st.caption("Next iteration: we can render a simple SVG tooth-line + arrows so it resembles Dolphin more closely.")
-        st.markdown(
-            f"""
-            <div class="band-gray">
-              <b>Initial Position Summary</b><br>
-              R6: {r6:.1f} mm &nbsp; | &nbsp; Midline: {midline_init:.1f} mm &nbsp; | &nbsp; L6: {l6:.1f} mm<br>
-              D: {d:.1f} mm &nbsp; | &nbsp; S: {s:.1f} mm<br><br>
-              <span class="hint">Growth space equiv stored for Step 2/3: +{st.session_state["growth_space_total"]:.2f} mm</span>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-        st.markdown("</div>", unsafe_allow_html=True)
+        with right:
+            st.markdown('<div class="panel"><div class="panel-title">Initial Position</div>', unsafe_allow_html=True)
+        
+            st.markdown(
+                initial_position_svg(
+                    r6=r6,
+                    midline=midline_init,
+                    l6=l6,
+                    d=d,
+                    s=s
+                ),
+                unsafe_allow_html=True
+            )
+        
+            st.markdown("</div>", unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------
