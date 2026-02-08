@@ -268,7 +268,7 @@ with step1:
     with left:
         st.markdown('<div class="panel"><div class="panel-title">Initial Position</div>', unsafe_allow_html=True)
 
-       c1, c2 = st.columns(2)
+        c1, c2 = st.columns(2)
         with c1:
             r6 = st.number_input("R6 (mm)", value=0.0, step=0.1, key="r6")
         with c2:
