@@ -121,8 +121,8 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-st.title("Growth-aware Dental VTO (McLaughlin/Dolphin-inspired)")
-st.caption("Dolphin sign convention: Crowding is negative, spacing positive. Space gained rows are positive. Goal: Remaining Discrepancy ≈ 0.")
+st.title("Growth-aware Dental VTO (McLaughlin-inspired)")
+st.caption("Sign convention: Crowding is negative, spacing positive. Space gained rows are positive. Goal: Remaining Discrepancy ≈ 0.")
 
 
 # =========================================================
