@@ -219,28 +219,23 @@ def proposed_movement_svg(
     """
     return html
     
-def initial_position_svg(r6: float, l6: float, d: float, s: float) -> str:
-    """
-    A simple, Dolphin-inspired SVG that updates with R6/L6/D/S.
-    We removed Midline from Step 1 per your request.
-    """
-    W, H = 760, 360
+def initial_position_svg(r6: float, l6: float, d: float, s: float, upper_midline_mm: float, lower_midline_mm: float) -> str:
+    W, H = 860, 520
     cx = W // 2
-    y_line = 190
 
-    scale = 18  # px per mm
-    r6_px = r6 * scale
-    l6_px = l6 * scale
+    # two baselines
+    y_upper = 190
+    y_lower = 310
 
-    x_r6 = 140 + r6_px
-    x_l6 = W - 140 - l6_px
-    x_mid = cx
+    scale = 18  # px/mm
 
-    def arrow(x1, x2, y, color="#1f77b4"):
-        return f"""
-        <line x1="{x1}" y1="{y}" x2="{x2}" y2="{y}"
-              stroke="{color}" stroke-width="4" marker-end="url(#arrow)"/>
-        """
+    # molar positions (same for both rows visually)
+    x_r6 = 140 + r6 * scale
+    x_l6 = W - 140 - l6 * scale
+
+    # midline positions
+    x_um = cx + upper_midline_mm * scale
+    x_lm = cx + lower_midline_mm * scale
 
     def box(x, y, text):
         return f"""
@@ -250,59 +245,60 @@ def initial_position_svg(r6: float, l6: float, d: float, s: float) -> str:
               font-family="Arial" font-size="18" fill="#111">{text}</text>
         """
 
-    def tooth(x, y, label):
+    def tooth(x, y, label, stroke="#333", stroke_w=2):
         return f"""
-        <path d="M {x-18} {y-50}
-                 C {x-35} {y-35}, {x-35} {y-5}, {x-18} {y+10}
-                 C {x-10} {y+25}, {x+10} {y+25}, {x+18} {y+10}
-                 C {x+35} {y-5}, {x+35} {y-35}, {x+18} {y-50}
+        <path d="M {x-18} {y-55}
+                 C {x-35} {y-40}, {x-35} {y-8}, {x-18} {y+10}
+                 C {x-10} {y+28}, {x+10} {y+28}, {x+18} {y+10}
+                 C {x+35} {y-8}, {x+35} {y-40}, {x+18} {y-55}
                  Z"
-              fill="white" stroke="#333" stroke-width="2"/>
-        <circle cx="{x}" cy="{y-12}" r="14" fill="white" stroke="#333" stroke-width="2"/>
-        <text x="{x}" y="{y-7}" text-anchor="middle" font-family="Arial" font-size="14">{label}</text>
+              fill="white" stroke="{stroke}" stroke-width="{stroke_w}"/>
+        <circle cx="{x}" cy="{y-18}" r="14" fill="white" stroke="{stroke}" stroke-width="{stroke_w}"/>
+        <text x="{x}" y="{y-13}" text-anchor="middle" font-family="Arial" font-size="14">{label}</text>
+        """
+
+    def midline_marker(x, y):
+        return f"""
+        <line x1="{x}" y1="{y-30}" x2="{x}" y2="{y+30}" stroke="#111" stroke-width="3"/>
+        <circle cx="{x}" cy="{y}" r="6" fill="#111"/>
         """
 
     html = f"""
-    <div style="border:1px solid rgba(49,51,63,.15); border-radius:10px; padding:10px; background:white;">
+    <div style="border:1px solid rgba(49,51,63,.15); border-radius:14px; padding:12px; background:white;">
       <svg width="100%" viewBox="0 0 {W} {H}" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
-            <path d="M0,0 L0,6 L9,3 z" fill="#1f77b4"/>
-          </marker>
-        </defs>
 
-        <text x="{cx}" y="30" text-anchor="middle" font-family="Arial" font-size="22" font-weight="700">
-          Initial Position
+        <text x="{cx}" y="34" text-anchor="middle" font-family="Arial" font-size="24" font-weight="800">
+          Initial Position (Upper + Lower Midlines)
         </text>
 
-        <!-- Axis -->
-        <line x1="80" y1="{y_line}" x2="{W-80}" y2="{y_line}" stroke="#333" stroke-width="4"/>
-        <line x1="{cx-160}" y1="{y_line-10}" x2="{cx-160}" y2="{y_line+10}" stroke="#333" stroke-width="3"/>
-        <line x1="{cx+160}" y1="{y_line-10}" x2="{cx+160}" y2="{y_line+10}" stroke="#333" stroke-width="3"/>
+        <!-- Upper baseline -->
+        <text x="70" y="{y_upper-20}" font-family="Arial" font-size="16" font-weight="700">Upper</text>
+        <line x1="90" y1="{y_upper}" x2="{W-90}" y2="{y_upper}" stroke="#333" stroke-width="4"/>
+        {tooth(x_r6, y_upper+55, "6")}
+        {tooth(x_um, y_upper+55, "1")}
+        {tooth(x_l6, y_upper+55, "6")}
+        {midline_marker(x_um, y_upper)}
 
-        <!-- Teeth placeholders -->
-        # Teeth placeholders
-        {tooth(x_r6, y_line+35, "6")}
-        {tooth(x_mid, y_line+35, "1")}
-        {tooth(x_l6, y_line+35, "6")}
+        <!-- Lower baseline -->
+        <text x="70" y="{y_lower-20}" font-family="Arial" font-size="16" font-weight="700">Lower</text>
+        <line x1="90" y1="{y_lower}" x2="{W-90}" y2="{y_lower}" stroke="#333" stroke-width="4"/>
+        {tooth(x_r6, y_lower+55, "6")}
+        {tooth(x_lm, y_lower+55, "1")}
+        {tooth(x_l6, y_lower+55, "6")}
+        {midline_marker(x_lm, y_lower)}
 
-        <!-- Input boxes (visual only) -->
-        <text x="150" y="70" font-family="Arial" font-size="16" font-weight="700">R6</text>
-        {box(150, 95, f"{r6:.1f}")}
+        <!-- Value boxes (top like Dolphin) -->
+        <text x="150" y="78" font-family="Arial" font-size="16" font-weight="700">R6</text>
+        {box(150, 105, f"{r6:.1f}")}
 
-        <text x="{W-150}" y="70" font-family="Arial" font-size="16" font-weight="700" text-anchor="end">L6</text>
-        {box(W-150, 95, f"{l6:.1f}")}
+        <text x="{W-150}" y="78" font-family="Arial" font-size="16" font-weight="700" text-anchor="end">L6</text>
+        {box(W-150, 105, f"{l6:.1f}")}
 
-        <!-- Arrows -->
-        {arrow(120, x_r6-30, 125)}
-        {arrow(W-120, x_l6+30, 125)}
+        <text x="{cx-20}" y="{H-90}" font-family="Arial" font-size="16" font-weight="700">D=</text>
+        {box(cx+30, H-95, f"{d:.1f}")}
 
-        <!-- D and S boxes -->
-        <text x="{cx-20}" y="{y_line+150}" font-family="Arial" font-size="16" font-weight="700">D=</text>
-        {box(cx+30, y_line+145, f"{d:.1f}")}
-
-        <text x="{cx-20}" y="{y_line+210}" font-family="Arial" font-size="16" font-weight="700">S=</text>
-        {box(cx+30, y_line+205, f"{s:.1f}")}
+        <text x="{cx-20}" y="{H-40}" font-family="Arial" font-size="16" font-weight="700">S=</text>
+        {box(cx+30, H-45, f"{s:.1f}")}
 
       </svg>
     </div>
@@ -363,6 +359,9 @@ ss_init("override", False)
 ss_init("include_growth", True)
 ss_init("growth_space_total", 0.0)
 
+ss_init("upper_midline_mm", 0.0)
+ss_init("lower_midline_mm", 0.0)
+
 # Step 3 defaults
 ss_init("treat_R", "Class II")
 ss_init("treat_L", "Class II")
@@ -406,6 +405,13 @@ with step1:
 
         d = st.number_input("D (mm)", value=1.5, step=0.1, key="d")
         s = st.number_input("S (mm)", value=0.0, step=0.1, key="s")
+
+        st.markdown('<div class="band-blue"><b>Dental Midlines</b></div>', unsafe_allow_html=True)
+        m1, m2 = st.columns(2)
+        with m1:
+            upper_midline_mm = st.number_input("Upper midline (mm)", value=st.session_state["upper_midline_mm"], step=0.1, key="upper_midline_mm")
+        with m2:
+            lower_midline_mm = st.number_input("Lower midline (mm)", value=st.session_state["lower_midline_mm"], step=0.1, key="lower_midline_mm")
 
         st.divider()
 
@@ -455,7 +461,14 @@ with step1:
     with right:
         st.markdown('<div class="panel"><div class="panel-title">Initial Position</div>', unsafe_allow_html=True)
 
-        svg_html = initial_position_svg(r6=r6, l6=l6, d=d, s=s)
+        svg_html = initial_position_svg(
+            r6=r6,
+            l6=l6,
+            d=d,
+            s=s,
+            upper_midline_mm=st.session_state["upper_midline_mm"],
+            lower_midline_mm=st.session_state["lower_midline_mm"],
+        )
         components.html(svg_html, height=420, scrolling=False)
 
         st.markdown(
