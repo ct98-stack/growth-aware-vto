@@ -5,6 +5,7 @@
 
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 
 st.set_page_config(page_title="Growth-aware Dental VTO", layout="wide")
 
@@ -315,8 +316,9 @@ with step1:
         st.markdown("</div>", unsafe_allow_html=True)
 
         with right:
-            st.markdown('<div class="panel"><div class="panel-title">Initial Position</div>', unsafe_allow_html=True)
-        
+            svg = initial_position_svg(r6=r6, midline=midline_init, l6=l6, d=d, s=s)
+            components.html(svg, height=420, scrolling=False)  
+            
             st.markdown(
                 initial_position_svg(
                     r6=r6,
