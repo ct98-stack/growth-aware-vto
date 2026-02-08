@@ -268,12 +268,10 @@ with step1:
     with left:
         st.markdown('<div class="panel"><div class="panel-title">Initial Position</div>', unsafe_allow_html=True)
 
-        c1, c2, c3 = st.columns([1, 1, 1])
+       c1, c2 = st.columns(2)
         with c1:
-            r6 = st.number_input("R6 (mm)", value=2.0, step=0.1, key="r6")
+            r6 = st.number_input("R6 (mm)", value=0.0, step=0.1, key="r6")
         with c2:
-            midline_init = st.number_input("Midline (mm)", value=0.0, step=0.1, key="midline_init")
-        with c3:
             l6 = st.number_input("L6 (mm)", value=0.5, step=0.1, key="l6")
 
         d = st.number_input("D (mm)", value=1.5, step=0.1, key="d")
@@ -322,10 +320,9 @@ with step1:
             st.markdown(
                 initial_position_svg(
                     r6=r6,
-                    midline=midline_init,
+                    midline=0.0,
                     l6=l6,
                     d=d,
-                    s=s
                 ),
                 unsafe_allow_html=True
             )
