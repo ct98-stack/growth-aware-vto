@@ -314,8 +314,7 @@ with step1:
         st.markdown("</div>", unsafe_allow_html=True)
 
         with right:
-            svg = initial_position_svg(r6=r6, midline=midline_init, l6=l6, d=d, s=s)
-            components.html(svg, height=420, scrolling=False)  
+            svg = initial_position_svg(r6=r6, midline=0.0, l6=l6, d=d, s=s)  
             
             st.markdown(
                 initial_position_svg(
