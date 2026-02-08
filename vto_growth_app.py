@@ -133,8 +133,8 @@ def ss_init(key, default):
         st.session_state[key] = default
 
 st.sidebar.markdown("## Global")
-st.sidebar.checkbox("Move both sides (R+L)", key="move_both")
-st.sidebar.checkbox("Override calculated values", key="override")
+#st.sidebar.checkbox("Move both sides (R+L)", key="move_both")
+#st.sidebar.checkbox("Override calculated values", key="override")
 st.sidebar.checkbox("Include growth contribution", key="include_growth", value=True)
 
 move_both = st.session_state["move_both"]
