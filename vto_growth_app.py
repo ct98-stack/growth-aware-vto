@@ -213,19 +213,20 @@ def proposed_movement_svg_two_arch(
     # Lower
     l_r6: float, l_r3: float, l_inc: float, l_l3: float, l_l6: float,
 ) -> str:
-    W, H = 1000, 760
+    W, H = 1000, 640
     cx = W // 2
 
-    # More vertical separation (upper clearly on top)
-    yU_line = 250
-    yU_tooth = yU_line + 80
-    yU_arrow = yU_line + 185
-    yU_valbox = yU_line - 165
+    # Upper row geometry (moved down)
+    yU_line  = 230
+    yU_tooth = yU_line + 78
+    yU_arrow = yU_line + 175
+    yU_valbox = yU_line - 155
 
-    yL_line = 560
-    yL_tooth = yL_line + 80
-    yL_arrow = yL_line + 185
-    yL_valbox = yL_line - 165
+    # Lower row geometry (clear separation)
+    yL_line  = 500
+    yL_tooth = yL_line + 78
+    yL_arrow = yL_line + 175
+    yL_valbox = yL_line - 155
 
     # X positions
     x_r6 = 130
@@ -257,18 +258,13 @@ def proposed_movement_svg_two_arch(
                  Z"
               fill="white" stroke="#333" stroke-width="2.2"/>
         <circle cx="{x}" cy="{y-28}" r="18" fill="white" stroke="#333" stroke-width="2.2"/>
-        <text x="{x}" y="{y-22}" text-anchor="middle" font-family="Arial" font-size="16" font-weight="900">{label}</text>
+        <text x="{x}" y="{y-22}" text-anchor="middle"
+              font-family="Arial" font-size="16" font-weight="900">{label}</text>
         """
 
-    def small_arrow(x, y, val, color="#1f77b4"):
-        """
-        Smaller arrow; BIG number above arrow.
-        Arrow points right for +, left for -, stub for 0.
-        """
+    def arrow_with_big_number(x, y, val, color="#1f77b4"):
         v = 0.0 if abs(val) < 0.05 else val
-
-        # shorter arrows than before
-        L = max(30, min(85, abs(v) * 18))
+        L = max(28, min(78, abs(v) * 18))
 
         if v > 0:
             x1, x2 = x - 10, x - 10 + L
@@ -277,20 +273,19 @@ def proposed_movement_svg_two_arch(
         else:
             x1, x2 = x - 35, x + 35
 
-        # Big number above arrow (like Dolphin)
+        # Big number ABOVE arrow
         return f"""
-        <text x="{x}" y="{y-16}" text-anchor="middle"
-              font-family="Arial" font-size="28" font-weight="900" fill="#111">{fmt(val)}</text>
+        <text x="{x}" y="{y-14}" text-anchor="middle"
+              font-family="Arial" font-size="30" font-weight="900" fill="#111">{fmt(val)}</text>
         <line x1="{x1}" y1="{y}" x2="{x2}" y2="{y}"
               stroke="{color}" stroke-width="6" marker-end="url(#arrowhead)"/>
         """
 
     def row(title, y_line, y_tooth, y_arrow, y_valbox, r6, r3, inc, l3, l6):
         line = f"""<line x1="80" y1="{y_line}" x2="{W-80}" y2="{y_line}" stroke="#333" stroke-width="4"/>"""
-
         return f"""
         <text x="{cx}" y="{y_valbox-40}" text-anchor="middle"
-              font-family="Arial" font-size="28" font-weight="900" fill="#111">{title}</text>
+              font-family="Arial" font-size="26" font-weight="900" fill="#111">{title}</text>
 
         {value_box(x_r6, y_valbox, "R6", r6)}
         {value_box(x_r3, y_valbox, "R3", r3)}
@@ -306,11 +301,11 @@ def proposed_movement_svg_two_arch(
         {tooth(x_l3, y_tooth, "3")}
         {tooth(x_l6, y_tooth, "6")}
 
-        {small_arrow(x_r6, y_arrow, r6)}
-        {small_arrow(x_r3, y_arrow, r3)}
-        {small_arrow(x_inc, y_arrow, inc)}
-        {small_arrow(x_l3, y_arrow, l3)}
-        {small_arrow(x_l6, y_arrow, l6)}
+        {arrow_with_big_number(x_r6, y_arrow, r6)}
+        {arrow_with_big_number(x_r3, y_arrow, r3)}
+        {arrow_with_big_number(x_inc, y_arrow, inc)}
+        {arrow_with_big_number(x_l3, y_arrow, l3)}
+        {arrow_with_big_number(x_l6, y_arrow, l6)}
         """
 
     html = f"""
@@ -322,7 +317,7 @@ def proposed_movement_svg_two_arch(
           </marker>
         </defs>
 
-        <text x="{cx}" y="44" text-anchor="middle"
+        <text x="{cx}" y="46" text-anchor="middle"
               font-family="Arial" font-size="30" font-weight="900">
           Dental VTO (Proposed Dental Movement)
         </text>
