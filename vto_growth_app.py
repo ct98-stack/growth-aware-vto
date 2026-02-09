@@ -347,7 +347,6 @@ def proposed_movement_svg_two_arch(
     l_r6, l_r3, l_inc, l_l3, l_l6
 )
 
-components.html(svg, height=820, scrolling=False)
 
 
 # -----------------------------
