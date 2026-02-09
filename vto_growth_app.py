@@ -756,7 +756,7 @@ with tabs[2]:
             u_r6=U_R6, u_r3=U_R3, u_inc=U_Inc, u_l3=U_L3, u_l6=U_L6,
             l_r6=L_R6, l_r3=L_R3, l_inc=L_Inc, l_l3=L_L3, l_l6=L_L6,
         )
-        components.html(svg, height=700, scrolling=False)
+        components.html(svg, height=820, scrolling=False)
 
         # Tables for transparency
         dfU = pd.DataFrame(
