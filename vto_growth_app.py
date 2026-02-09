@@ -213,102 +213,120 @@ def proposed_movement_svg_two_arch(
     # Lower
     l_r6: float, l_r3: float, l_inc: float, l_l3: float, l_l6: float,
 ) -> str:
-    W, H = 940, 600
+    W, H = 980, 720
     cx = W // 2
 
-    y_upper = 220
-    y_lower = 410
+    # Baselines
+    yU = 260   # upper baseline y
+    yL = 540   # lower baseline y
 
+    # X positions
     x_r6 = 120
-    x_r3 = 300
+    x_r3 = 330
     x_inc = cx
-    x_l3 = 640
-    x_l6 = 820
+    x_l3 = 650
+    x_l6 = 860
+
+    def fmt(v: float) -> str:
+        # Dolphin-ish: show one decimal, keep -0.0 from appearing
+        v = 0.0 if abs(v) < 0.05 else v
+        return f"{v:.1f}"
+
+    def value_box(x, y, label, val, w=84, h=46, fs=22):
+        return f"""
+        <text x="{x}" y="{y-10}" text-anchor="middle"
+              font-family="Arial" font-size="18" font-weight="800" fill="#111">{label}</text>
+        <rect x="{x-w/2}" y="{y}" width="{w}" height="{h}" rx="6"
+              fill="white" stroke="#9a9a9a" stroke-width="2.2"/>
+        <text x="{x}" y="{y+h/2+8}" text-anchor="middle"
+              font-family="Arial" font-size="{fs}" font-weight="800" fill="#111">{fmt(val)}</text>
+        """
 
     def tooth(x, y, label):
+        # slightly larger tooth
         return f"""
-        <path d="M {x-20} {y-70}
-                 C {x-40} {y-50}, {x-40} {y-10}, {x-20} {y+10}
-                 C {x-10} {y+35}, {x+10} {y+35}, {x+20} {y+10}
-                 C {x+40} {y-10}, {x+40} {y-50}, {x+20} {y-70}
+        <path d="M {x-22} {y-78}
+                 C {x-46} {y-55}, {x-46} {y-10}, {x-22} {y+12}
+                 C {x-12} {y+42}, {x+12} {y+42}, {x+22} {y+12}
+                 C {x+46} {y-10}, {x+46} {y-55}, {x+22} {y-78}
                  Z"
-              fill="white" stroke="#333" stroke-width="2"/>
-        <circle cx="{x}" cy="{y-25}" r="16" fill="white" stroke="#333" stroke-width="2"/>
-        <text x="{x}" y="{y-20}" text-anchor="middle" font-family="Arial" font-size="14">{label}</text>
+              fill="white" stroke="#333" stroke-width="2.4"/>
+        <circle cx="{x}" cy="{y-28}" r="18" fill="white" stroke="#333" stroke-width="2.4"/>
+        <text x="{x}" y="{y-22}" text-anchor="middle" font-family="Arial" font-size="16" font-weight="800">{label}</text>
         """
 
-    def value_box(x, y, val):
-        return f"""
-        <rect x="{x-34}" y="{y-20}" width="68" height="40" rx="5"
-              fill="white" stroke="#999" stroke-width="2"/>
-        <text x="{x}" y="{y+6}" text-anchor="middle"
-              font-family="Arial" font-size="18" fill="#111">{val:.1f}</text>
-        """
-
-    def arrow_under(x, y, val):
-        L = max(18, min(90, abs(val) * 20))
-        if val > 0:
+    def arrow(x, y, val, color="#1f77b4"):
+        # Draw a horizontal arrow under tooth with big number next to it
+        # Rightward arrow for positive, leftward for negative, small stub for zero
+        v = 0.0 if abs(val) < 0.05 else val
+        L = max(45, min(140, abs(v) * 40))  # more dramatic scale
+        if v > 0:
             x1, x2 = x - 10, x - 10 + L
-        elif val < 0:
+            tx = x2 + 24
+            anchor = "start"
+        elif v < 0:
             x1, x2 = x + 10, x + 10 - L
+            tx = x2 - 24
+            anchor = "end"
         else:
-            x1, x2 = x - 25, x + 25
+            x1, x2 = x - 40, x + 40
+            tx = x + 0
+            anchor = "middle"
+
         return f"""
         <line x1="{x1}" y1="{y}" x2="{x2}" y2="{y}"
-              stroke="#1f77b4" stroke-width="5" marker-end="url(#arrow)"/>
+              stroke="{color}" stroke-width="7" marker-end="url(#arrowhead)"/>
+        <text x="{tx}" y="{y+10}" text-anchor="{anchor}"
+              font-family="Arial" font-size="22" font-weight="900" fill="#111">{fmt(val)}</text>
         """
 
-    def row(y_base, title, r6, r3, inc, l3, l6):
+    def row(title, y_base, r6, r3, inc, l3, l6):
+        # top numeric boxes (like Dolphin)
+        top_y = y_base - 190
+        # baseline
+        line = f"""<line x1="80" y1="{y_base}" x2="{W-80}" y2="{y_base}" stroke="#333" stroke-width="4.2"/>"""
+
         return f"""
-        <text x="70" y="{y_base-35}" font-family="Arial" font-size="16" font-weight="700">{title}</text>
-        <line x1="80" y1="{y_base}" x2="{W-80}" y2="{y_base}" stroke="#333" stroke-width="4"/>
+        <text x="{cx}" y="{y_base-240}" text-anchor="middle"
+              font-family="Arial" font-size="26" font-weight="900">{title}</text>
 
-        {value_box(x_r6, y_base-120, r6)}
-        {value_box(x_r3, y_base-120, r3)}
-        {value_box(x_inc, y_base-120, inc)}
-        {value_box(x_l3, y_base-120, l3)}
-        {value_box(x_l6, y_base-120, l6)}
+        {value_box(x_r6, top_y, "R6", r6)}
+        {value_box(x_r3, top_y, "R3", r3)}
+        {value_box(x_inc, top_y, "Inc", inc)}
+        {value_box(x_l3, top_y, "L3", l3)}
+        {value_box(x_l6, top_y, "L6", l6)}
 
-        <text x="{x_r6}" y="{y_base-148}" text-anchor="middle" font-family="Arial" font-size="14" font-weight="700">R6</text>
-        <text x="{x_r3}" y="{y_base-148}" text-anchor="middle" font-family="Arial" font-size="14" font-weight="700">R3</text>
-        <text x="{x_inc}" y="{y_base-148}" text-anchor="middle" font-family="Arial" font-size="14" font-weight="700">Inc</text>
-        <text x="{x_l3}" y="{y_base-148}" text-anchor="middle" font-family="Arial" font-size="14" font-weight="700">L3</text>
-        <text x="{x_l6}" y="{y_base-148}" text-anchor="middle" font-family="Arial" font-size="14" font-weight="700">L6</text>
+        {line}
 
-        {tooth(x_r6, y_base+60, "6")}
-        {tooth(x_r3, y_base+60, "3")}
-        {tooth(x_inc, y_base+60, "1")}
-        {tooth(x_l3, y_base+60, "3")}
-        {tooth(x_l6, y_base+60, "6")}
+        {tooth(x_r6, y_base+78, "6")}
+        {tooth(x_r3, y_base+78, "3")}
+        {tooth(x_inc, y_base+78, "1")}
+        {tooth(x_l3, y_base+78, "3")}
+        {tooth(x_l6, y_base+78, "6")}
 
-        {arrow_under(x_r6, y_base+150, r6)}
-        {arrow_under(x_r3, y_base+150, r3)}
-        {arrow_under(x_inc, y_base+150, inc)}
-        {arrow_under(x_l3, y_base+150, l3)}
-        {arrow_under(x_l6, y_base+150, l6)}
-
-        <text x="{x_r6}" y="{y_base+190}" text-anchor="middle" font-family="Arial" font-size="14">{r6:.1f}</text>
-        <text x="{x_r3}" y="{y_base+190}" text-anchor="middle" font-family="Arial" font-size="14">{r3:.1f}</text>
-        <text x="{x_inc}" y="{y_base+190}" text-anchor="middle" font-family="Arial" font-size="14">{inc:.1f}</text>
-        <text x="{x_l3}" y="{y_base+190}" text-anchor="middle" font-family="Arial" font-size="14">{l3:.1f}</text>
-        <text x="{x_l6}" y="{y_base+190}" text-anchor="middle" font-family="Arial" font-size="14">{l6:.1f}</text>
+        {arrow(x_r6, y_base+185, r6)}
+        {arrow(x_r3, y_base+185, r3)}
+        {arrow(x_inc, y_base+185, inc)}
+        {arrow(x_l3, y_base+185, l3)}
+        {arrow(x_l6, y_base+185, l6)}
         """
 
     html = f"""
-    <div style="border:1px solid rgba(49,51,63,.15); border-radius:14px; padding:10px; background:white;">
+    <div style="border:1px solid rgba(49,51,63,.15); border-radius:16px; padding:12px; background:white;">
       <svg width="100%" viewBox="0 0 {W} {H}" xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
-            <path d="M0,0 L0,6 L9,3 z" fill="#1f77b4"/>
+          <marker id="arrowhead" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+            <path d="M0,0 L0,12 L12,6 z" fill="#1f77b4"/>
           </marker>
         </defs>
 
-        <text x="{cx}" y="36" text-anchor="middle" font-family="Arial" font-size="22" font-weight="800">
-          Dental VTO (Proposed Dental Movement) — Upper + Lower
+        <text x="{cx}" y="42" text-anchor="middle"
+              font-family="Arial" font-size="28" font-weight="900">
+          Dental VTO (Proposed Dental Movement)
         </text>
 
-        {row(y_upper, "Upper", u_r6, u_r3, u_inc, u_l3, u_l6)}
-        {row(y_lower, "Lower", l_r6, l_r3, l_inc, l_l3, l_l6)}
+        {row("Upper", yU, u_r6, u_r3, u_inc, u_l3, u_l6)}
+        {row("Lower", yL, l_r6, l_r3, l_inc, l_l3, l_l6)}
       </svg>
     </div>
     """
