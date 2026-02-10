@@ -789,3 +789,12 @@ def proposed_movement_svg_two_arch(
     </svg>
     """
     return svg
+
+
+    import streamlit.components.v1 as components
+
+svg = proposed_movement_svg_two_arch(
+    u_r6, u_r3, u_inc, u_l3, u_l6,
+    l_r6, l_r3, l_inc, l_l3, l_l6,
+)
+components.html(svg, height=660, scrolling=False)
