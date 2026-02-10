@@ -437,21 +437,25 @@ def outward_sign(rem: float, side: str) -> float:
     - Positive values → arrows point RIGHT (toward patient's left)
     - Negative values → arrows point LEFT (toward patient's right)
     
-    Movement logic:
+    Movement logic (CORRECTED):
     - If crowding (rem < 0): expand outward from midline
-    - If spacing (rem > 0): move inward toward midline
+    - If spacing/extraction (rem > 0): close space - move DISTALLY (away from midline toward molars)
+    
+    This means BOTH crowding AND spacing move away from midline:
+    - Crowding: expand to create space
+    - Extraction: retract to close space
     """
     if rem == 0:
         return 0.0
     
+    # Both crowding and spacing move AWAY from midline (outward/distal)
+    # The difference is WHY: crowding expands, spacing retracts
     if side == "R":
-        # Right side: outward (away from midline) = negative (leftward)
-        #             inward (toward midline) = positive (rightward)
-        return -1.0 if rem < 0 else 1.0
+        # Right side: distal/outward = negative (leftward, toward molars)
+        return -1.0
     else:  # side == "L"
-        # Left side: outward (away from midline) = positive (rightward)
-        #            inward (toward midline) = negative (leftward)
-        return 1.0 if rem < 0 else -1.0
+        # Left side: distal/outward = positive (rightward, toward molars)
+        return 1.0
 
 
 # -----------------------------
