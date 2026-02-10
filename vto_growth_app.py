@@ -274,7 +274,7 @@ def initial_position_svg(
         else:
             x = W - 150 - val * scale
         
-        arrow_y = y - 85  # Position above tooth (was y + 90 below)
+        arrow_y = y - 105  # Raised higher to avoid R6/L6 boxes
         arrow_length = min(80, abs(val) * 24)  # Longer arrows (was 40, 12)
         
         if val > 0:  # Molar shifted mesially (forward)
