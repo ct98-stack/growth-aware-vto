@@ -866,10 +866,20 @@ with tabs[2]:
     # ---------- LOWER ARCH ----------
     st.markdown("## Lower Arch Discrepancy")
 
-    # Lower midline component tracks lower dental midline
+    # Lower midline component tracks lower dental midline FROM STEP 1
     lower_dental_midline = float(st.session_state["lower_dental_midline_mm"])
     midline_L_R = +lower_dental_midline
     midline_L_L = -lower_dental_midline
+    
+    st.markdown(
+        f"<div class='band-gray'>"
+        f"<b>Midline values auto-populated from Step 1:</b> "
+        f"Lower dental = {lower_dental_midline:+.2f} mm, "
+        f"Lower skeletal = {float(st.session_state['lower_skeletal_midline_mm']):+.2f} mm "
+        f"<i>(Edit these in Step 1 if needed)</i>"
+        f"</div>",
+        unsafe_allow_html=True
+    )
 
     st.markdown('<div class="band-blue">Initial Discrepancy Inputs (Lower 3–3)</div>', unsafe_allow_html=True)
     lA, lB = st.columns(2)
