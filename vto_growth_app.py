@@ -429,7 +429,7 @@ def expected_movement_allocation(remaining: float, treat_to: str) -> dict[str, f
     return {"6": molar, "3": canine, "inc": inc}
 
 
-def outward_sign(rem: float, side: str) -> float:
+def movement_sign(rem: float, side: str, tooth_type: str) -> float:
     """
     Convention: Positive = toward patient's LEFT, Negative = toward patient's RIGHT
     
@@ -437,25 +437,37 @@ def outward_sign(rem: float, side: str) -> float:
     - Positive values → arrows point RIGHT (toward patient's left)
     - Negative values → arrows point LEFT (toward patient's right)
     
-    Movement logic (CORRECTED):
-    - If crowding (rem < 0): expand outward from midline
-    - If spacing/extraction (rem > 0): close space - move DISTALLY (away from midline toward molars)
+    Extraction mechanics (rem > 0, excess space):
+    - MOLARS (6): Anchor or move MESIALLY (toward midline) to help close space
+    - CANINES (3) & INCISORS: Move DISTALLY (toward molars) to close space
     
-    This means BOTH crowding AND spacing move away from midline:
-    - Crowding: expand to create space
-    - Extraction: retract to close space
+    Crowding mechanics (rem < 0, need space):
+    - ALL teeth: Expand outward from midline
     """
     if rem == 0:
         return 0.0
     
-    # Both crowding and spacing move AWAY from midline (outward/distal)
-    # The difference is WHY: crowding expands, spacing retracts
-    if side == "R":
-        # Right side: distal/outward = negative (leftward, toward molars)
-        return -1.0
-    else:  # side == "L"
-        # Left side: distal/outward = positive (rightward, toward molars)
-        return 1.0
+    # CROWDING: All teeth expand away from midline
+    if rem < 0:
+        if side == "R":
+            return -1.0  # Right side: expand left (away from midline)
+        else:
+            return 1.0   # Left side: expand right (away from midline)
+    
+    # EXTRACTION/SPACING: Different patterns by tooth type
+    else:  # rem > 0
+        if tooth_type == "6":  # MOLARS
+            # Molars move MESIALLY (toward midline) to help close space
+            if side == "R":
+                return 1.0   # Right molar moves right (mesially, toward midline)
+            else:
+                return -1.0  # Left molar moves left (mesially, toward midline)
+        else:  # CANINES and INCISORS
+            # Anterior teeth move DISTALLY (toward molars)
+            if side == "R":
+                return -1.0  # Right canine/incisor moves left (distally, toward molar)
+            else:
+                return 1.0   # Left canine/incisor moves right (distally, toward molar)
 
 
 # -----------------------------
@@ -918,32 +930,32 @@ with tabs[3]:
     L_alloc_R = expected_movement_allocation(L_remaining_R, treat_to)
     L_alloc_L = expected_movement_allocation(L_remaining_L, treat_to)
 
-    # Apply directional signs
+    # Apply directional signs with tooth-type specific logic
     # Upper right side
-    u_r6 = U_alloc_R["6"] * outward_sign(U_remaining_R, "R")
-    u_r3 = U_alloc_R["3"] * outward_sign(U_remaining_R, "R")
+    u_r6 = U_alloc_R["6"] * movement_sign(U_remaining_R, "R", "6")
+    u_r3 = U_alloc_R["3"] * movement_sign(U_remaining_R, "R", "3")
     
     # Upper left side
-    u_l6 = U_alloc_L["6"] * outward_sign(U_remaining_L, "L")
-    u_l3 = U_alloc_L["3"] * outward_sign(U_remaining_L, "L")
+    u_l6 = U_alloc_L["6"] * movement_sign(U_remaining_L, "L", "6")
+    u_l3 = U_alloc_L["3"] * movement_sign(U_remaining_L, "L", "3")
     
     # Upper incisors (average of both sides)
-    u_inc = (U_alloc_R["inc"] * outward_sign(U_remaining_R, "R") + 
-             U_alloc_L["inc"] * outward_sign(U_remaining_L, "L")) / 2.0
+    u_inc = (U_alloc_R["inc"] * movement_sign(U_remaining_R, "R", "inc") + 
+             U_alloc_L["inc"] * movement_sign(U_remaining_L, "L", "inc")) / 2.0
 
     # Lower right side
-    l_r6 = L_alloc_R["6"] * outward_sign(L_remaining_R, "R")
-    l_r3 = L_alloc_R["3"] * outward_sign(L_remaining_R, "R")
+    l_r6 = L_alloc_R["6"] * movement_sign(L_remaining_R, "R", "6")
+    l_r3 = L_alloc_R["3"] * movement_sign(L_remaining_R, "R", "3")
     
     # Lower left side
-    l_l6 = L_alloc_L["6"] * outward_sign(L_remaining_L, "L")
-    l_l3 = L_alloc_L["3"] * outward_sign(L_remaining_L, "L")
+    l_l6 = L_alloc_L["6"] * movement_sign(L_remaining_L, "L", "6")
+    l_l3 = L_alloc_L["3"] * movement_sign(L_remaining_L, "L", "3")
     
     # Lower incisors - DIRECT MIDLINE CORRECTION
     # The lower incisor movement must equal the dental midline to achieve facial coincidence
     # We REPLACE the allocated movement with the direct midline correction
-    l_inc_from_allocation = (L_alloc_R["inc"] * outward_sign(L_remaining_R, "R") + 
-                              L_alloc_L["inc"] * outward_sign(L_remaining_L, "L")) / 2.0
+    l_inc_from_allocation = (L_alloc_R["inc"] * movement_sign(L_remaining_R, "R", "inc") + 
+                              L_alloc_L["inc"] * movement_sign(L_remaining_L, "L", "inc")) / 2.0
     
     # DIRECT midline correction: move incisors by the full midline amount
     # Sign: if dental midline is +1.5 (shifted to patient's left), 
