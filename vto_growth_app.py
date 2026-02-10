@@ -682,8 +682,12 @@ with tabs[1]:
 # =========================================================
 # STEP 3
 # =========================================================
+# STEP 3
+# =========================================================
+import streamlit.components.v1 as components  # <-- TOP-LEVEL import (not inside function)
+
 def proposed_movement_svg_two_arch(
-    # Upper movements (mm): + = to patient LEFT, - = to patient RIGHT (consistent diagram sign)
+    # Upper movements (mm): + = to patient LEFT, - = to patient RIGHT
     u_r6: float, u_r3: float, u_inc: float, u_l3: float, u_l6: float,
     # Lower movements (mm)
     l_r6: float, l_r3: float, l_inc: float, l_l3: float, l_l6: float,
@@ -695,7 +699,7 @@ def proposed_movement_svg_two_arch(
     xs = [140, 350, cx, 650, 860]
     tooth_labels = ["6", "3", "1", "3", "6"]
 
-    # Vertical layout (roomy + non-overlapping)
+    # Vertical layout
     title_y = 48
 
     yU_label = 95
@@ -708,7 +712,7 @@ def proposed_movement_svg_two_arch(
     yL_line  = 420
     yL_tooth = 485
     yL_arrow = 570
-    yL_num   = 602  # near bottom, still visible
+    yL_num   = 602
 
     def clean(v: float) -> float:
         return 0.0 if abs(v) < 0.05 else float(v)
@@ -717,7 +721,6 @@ def proposed_movement_svg_two_arch(
         return f"{clean(v):.1f}"
 
     def tooth(x: int, y: int, lab: str) -> str:
-        # simple tooth silhouette (clean + readable)
         return f"""
         <path d="M {x-24} {y-52}
                  C {x-42} {y-30}, {x-40} {y-2}, {x-20} {y+14}
@@ -732,7 +735,6 @@ def proposed_movement_svg_two_arch(
 
     def arrow(x: int, y: int, v: float) -> str:
         v = clean(v)
-        # arrow length scales but stays modest
         L = max(22, min(70, abs(v) * 18))
         if v > 0:
             x1, x2 = x - 10, x - 10 + L
@@ -757,7 +759,6 @@ def proposed_movement_svg_two_arch(
         vs = [r6, r3, inc, l3, l6]
 
         line = f"""<line x1="85" y1="{y_line}" x2="{W-85}" y2="{y_line}" stroke="#222" stroke-width="4"/>"""
-
         teeth = "\n".join(tooth(x, y_tooth, lab) for x, lab in zip(xs, tooth_labels))
         arrows = "\n".join(arrow(x, y_arrow, v) for x, v in zip(xs, vs))
         nums = "\n".join(num(x, y_num, v) for x, v in zip(xs, vs))
@@ -791,8 +792,7 @@ def proposed_movement_svg_two_arch(
     return svg
 
 
-    import streamlit.components.v1 as components
-
+# --- RENDER (this must be OUTSIDE the function) ---
 svg = proposed_movement_svg_two_arch(
     u_r6, u_r3, u_inc, u_l3, u_l6,
     l_r6, l_r3, l_inc, l_l3, l_l6,
