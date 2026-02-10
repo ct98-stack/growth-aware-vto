@@ -292,7 +292,7 @@ def initial_position_svg(
         </defs>
         <line x1="{x1}" y1="{arrow_y}" x2="{x2}" y2="{arrow_y}"
               stroke="{color}" stroke-width="5" marker-end="url(#arrow_{side})"/>
-        <text x="{x}" y="{arrow_y - 10}" text-anchor="middle"
+        <text x="{x}" y="{arrow_y + 20}" text-anchor="middle"
               font-family="Arial" font-size="16" font-weight="800" fill="{color}">
           {abs(val):.1f}mm
         </text>
