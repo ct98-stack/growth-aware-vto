@@ -86,7 +86,7 @@ GROWTH_DATA = {
 }
 
 
-def calculate_growth_space_equivalent(cvms_stage: str, treatment_duration: float, include_growth: bool) -> dict:
+def calculate_growth_space_equivalent(cvms_stage: str, treatment_duration_months: float, include_growth: bool) -> dict:
     """
     Calculate space equivalent from growth based on CVMS stage.
     
@@ -116,10 +116,13 @@ def calculate_growth_space_equivalent(cvms_stage: str, treatment_duration: float
     
     data = GROWTH_DATA[cvms_stage]
     
+    # Convert months to years for calculation
+    treatment_duration_years = treatment_duration_months / 12.0
+    
     # Growth over treatment duration (mm)
-    sagittal_growth = data["sagittal"] * treatment_duration
-    vertical_growth = data["vertical"] * treatment_duration
-    transverse_growth = data["transverse"] * treatment_duration
+    sagittal_growth = data["sagittal"] * treatment_duration_years
+    vertical_growth = data["vertical"] * treatment_duration_years
+    transverse_growth = data["transverse"] * treatment_duration_years
     
     # Space equivalent calculations
     # Sagittal: 30% upper, 70% lower (reflects differential contribution)
@@ -460,7 +463,7 @@ ss_init("lower_skeletal_midline_mm", 0.0)
 
 # Growth parameters
 ss_init("cvms_stage", "CVMS 3")
-ss_init("treatment_duration", 2.0)
+ss_init("treatment_duration", 24.0)  # months
 
 # Store remaining discrepancies
 ss_init("remaining_U_R", 0.0)
@@ -594,13 +597,13 @@ with tabs[1]:
         )
         
         treatment_duration = st.number_input(
-            "Expected treatment duration (years)",
-            min_value=0.5,
-            max_value=5.0,
-            value=2.0,
-            step=0.5,
+            "Expected treatment duration (months)",
+            min_value=6.0,
+            max_value=60.0,
+            value=24.0,
+            step=1.0,
             key="treatment_duration",
-            help="Typical orthodontic treatment: 1.5-3.0 years"
+            help="Typical orthodontic treatment: 18-36 months"
         )
     
     with col2:
@@ -626,7 +629,7 @@ with tabs[1]:
             
             st.markdown(
                 f"<div class='band-green'>"
-                f"<b>Total Growth Over {treatment_duration} Years:</b><br>"
+                f"<b>Total Growth Over {treatment_duration:.0f} Months ({treatment_duration/12:.1f} Years):</b><br>"
                 f"• Sagittal: {growth_calc['sagittal']:.2f} mm<br>"
                 f"• Vertical: {growth_calc['vertical']:.2f} mm<br>"
                 f"• Transverse: {growth_calc['transverse']:.2f} mm"
@@ -688,7 +691,7 @@ with tabs[2]:
     treatment_duration = st.session_state["treatment_duration"]
     growth_calc = calculate_growth_space_equivalent(cvms_stage, treatment_duration, include_growth)
     
-    growth_label = f"Growth ({cvms_stage}, {treatment_duration}y) [ON]" if include_growth else "Growth [OFF]"
+    growth_label = f"Growth ({cvms_stage}, {treatment_duration:.0f}mo) [ON]" if include_growth else "Growth [OFF]"
     growth_U_total = growth_calc["upper_total"]
     growth_L_total = growth_calc["lower_total"]
 
@@ -967,6 +970,6 @@ with tabs[3]:
         u_r6, u_r3, u_inc, u_l3, u_l6,
         l_r6, l_r3, l_inc, l_l3, l_l6,
     )
-    components.html(svg, height=660, scrolling=False)
+    components.html(svg, height=760, scrolling=False)
 
     st.markdown("</div>", unsafe_allow_html=True)
