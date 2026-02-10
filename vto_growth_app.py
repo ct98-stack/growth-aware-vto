@@ -268,32 +268,32 @@ def initial_position_svg(
         if abs(val) < 0.2:
             return ""  # No arrow if essentially at Class I
         
-        # Position arrow below the tooth
+        # Position arrow ABOVE the tooth
         if side == "R":
             x = 150 + val * scale
         else:
             x = W - 150 - val * scale
         
-        arrow_y = y + 90
-        arrow_length = min(40, abs(val) * 12)
+        arrow_y = y - 85  # Position above tooth (was y + 90 below)
+        arrow_length = min(80, abs(val) * 24)  # Longer arrows (was 40, 12)
         
         if val > 0:  # Molar shifted mesially (forward)
-            x1, x2 = x - 8, x - 8 + arrow_length
+            x1, x2 = x - 12, x - 12 + arrow_length
             color = "#e74c3c"  # Red for mesial
         else:  # Molar shifted distally (back)
-            x1, x2 = x + 8, x + 8 - arrow_length
+            x1, x2 = x + 12, x + 12 - arrow_length
             color = "#3498db"  # Blue for distal
         
         return f"""
         <defs>
-          <marker id="arrow_{side}" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-            <path d="M0,0 L0,6 L6,3 z" fill="{color}"/>
+          <marker id="arrow_{side}" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+            <path d="M0,0 L0,10 L10,5 z" fill="{color}"/>
           </marker>
         </defs>
         <line x1="{x1}" y1="{arrow_y}" x2="{x2}" y2="{arrow_y}"
-              stroke="{color}" stroke-width="3" marker-end="url(#arrow_{side})"/>
-        <text x="{x}" y="{arrow_y - 8}" text-anchor="middle"
-              font-family="Arial" font-size="13" font-weight="700" fill="{color}">
+              stroke="{color}" stroke-width="5" marker-end="url(#arrow_{side})"/>
+        <text x="{x}" y="{arrow_y - 10}" text-anchor="middle"
+              font-family="Arial" font-size="16" font-weight="800" fill="{color}">
           {abs(val):.1f}mm
         </text>
         """
