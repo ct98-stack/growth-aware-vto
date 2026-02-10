@@ -274,15 +274,29 @@ def initial_position_svg(
         else:
             x = W - 150 - val * scale
         
-        arrow_y = y - 100  # Positioned between R6/L6 boxes and arch line
+        arrow_y = y - 115  # Positioned between R6/L6 boxes and arch line
         arrow_length = min(80, abs(val) * 24)  # Longer arrows (was 40, 12)
         
-        if val > 0:  # Molar shifted mesially (forward)
-            x1, x2 = x - 12, x - 12 + arrow_length
+        # Arrow direction logic:
+        # Positive value = molar shifted MESIALLY (toward midline)
+        # Negative value = molar shifted DISTALLY (away from midline)
+        
+        if val > 0:  # Molar shifted mesially (forward/toward midline)
             color = "#e74c3c"  # Red for mesial
-        else:  # Molar shifted distally (back)
-            x1, x2 = x + 12, x + 12 - arrow_length
+            if side == "R":
+                # Right side: mesial = toward RIGHT (toward center)
+                x1, x2 = x - 12, x - 12 + arrow_length  # Arrow points RIGHT
+            else:  # side == "L"
+                # Left side: mesial = toward LEFT (toward center)
+                x1, x2 = x + 12, x + 12 - arrow_length  # Arrow points LEFT
+        else:  # val < 0, Molar shifted distally (back/away from midline)
             color = "#3498db"  # Blue for distal
+            if side == "R":
+                # Right side: distal = toward LEFT (away from center)
+                x1, x2 = x + 12, x + 12 - arrow_length  # Arrow points LEFT
+            else:  # side == "L"
+                # Left side: distal = toward RIGHT (away from center)
+                x1, x2 = x - 12, x - 12 + arrow_length  # Arrow points RIGHT
         
         return f"""
         <defs>
