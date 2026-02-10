@@ -83,12 +83,20 @@ GROWTH_DATA = {
     "CVMS 4": {"sagittal": 2.5, "vertical": 2.25, "transverse": 1.25, "description": "Post-pubertal, declining growth"},
     "CVMS 5": {"sagittal": 1.0, "vertical": 1.25, "transverse": 0.75, "description": "Late adolescent, minimal growth"},
     "CVMS 6": {"sagittal": 0.25, "vertical": 0.25, "transverse": 0.25, "description": "Growth completion"},
+    "Custom": {"sagittal": 0.0, "vertical": 0.0, "transverse": 0.0, "description": "Enter your own growth predictions"},
 }
 
 
-def calculate_growth_space_equivalent(cvms_stage: str, treatment_duration_months: float, include_growth: bool) -> dict:
+def calculate_growth_space_equivalent(
+    cvms_stage: str, 
+    treatment_duration_months: float, 
+    include_growth: bool,
+    custom_sagittal: float = 0.0,
+    custom_vertical: float = 0.0,
+    custom_transverse: float = 0.0
+) -> dict:
     """
-    Calculate space equivalent from growth based on CVMS stage.
+    Calculate space equivalent from growth based on CVMS stage or custom values.
     
     Mathematical approach:
     - Sagittal growth (A-P): Creates space as mandible advances
@@ -114,7 +122,15 @@ def calculate_growth_space_equivalent(cvms_stage: str, treatment_duration_months
             "lower_from_transverse": 0.0,
         }
     
-    data = GROWTH_DATA[cvms_stage]
+    # Use custom values if Custom is selected, otherwise use CVMS preset
+    if cvms_stage == "Custom":
+        data = {
+            "sagittal": custom_sagittal,
+            "vertical": custom_vertical,
+            "transverse": custom_transverse
+        }
+    else:
+        data = GROWTH_DATA[cvms_stage]
     
     # Convert months to years for calculation
     treatment_duration_years = treatment_duration_months / 12.0
@@ -200,12 +216,12 @@ def initial_position_svg(
     lower_dental_midline_mm: float,
     lower_skeletal_midline_mm: float,
 ) -> str:
-    W, H = 920, 560
+    W, H = 920, 600
     cx = W // 2
 
     # two baselines
     y_upper = 205
-    y_lower = 355
+    y_lower = 385
 
     scale = 18  # px/mm
 
@@ -246,6 +262,41 @@ def initial_position_svg(
         <line x1="{x}" y1="{y-28}" x2="{x}" y2="{y+28}" stroke="{color}" stroke-width="3"/>
         <circle cx="{x}" cy="{y}" r="6" fill="{color}"/>
         """
+    
+    def molar_arrow(val: float, side: str, y: int) -> str:
+        """Show arrow indicating molar displacement from Class I (0 position)"""
+        if abs(val) < 0.2:
+            return ""  # No arrow if essentially at Class I
+        
+        # Position arrow below the tooth
+        if side == "R":
+            x = 150 + val * scale
+        else:
+            x = W - 150 - val * scale
+        
+        arrow_y = y + 90
+        arrow_length = min(40, abs(val) * 12)
+        
+        if val > 0:  # Molar shifted mesially (forward)
+            x1, x2 = x - 8, x - 8 + arrow_length
+            color = "#e74c3c"  # Red for mesial
+        else:  # Molar shifted distally (back)
+            x1, x2 = x + 8, x + 8 - arrow_length
+            color = "#3498db"  # Blue for distal
+        
+        return f"""
+        <defs>
+          <marker id="arrow_{side}" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L6,3 z" fill="{color}"/>
+          </marker>
+        </defs>
+        <line x1="{x1}" y1="{arrow_y}" x2="{x2}" y2="{arrow_y}"
+              stroke="{color}" stroke-width="3" marker-end="url(#arrow_{side})"/>
+        <text x="{x}" y="{arrow_y - 8}" text-anchor="middle"
+              font-family="Arial" font-size="13" font-weight="700" fill="{color}">
+          {abs(val):.1f}mm
+        </text>
+        """
 
     html = f"""
     <div style="border:1px solid rgba(49,51,63,.15); border-radius:14px; padding:12px; background:white;">
@@ -262,6 +313,10 @@ def initial_position_svg(
         {tooth(x_um, y_upper+55, "1")}
         {tooth(x_l6, y_upper+55, "6")}
         {midline_marker(x_um, y_upper, color="#111", label="Upper dental")}
+        
+        <!-- Molar arrows showing displacement from Class I -->
+        {molar_arrow(r6, "R", y_upper+55)}
+        {molar_arrow(l6, "L", y_upper+55)}
 
         <!-- LOWER -->
         <text x="70" y="{y_lower-20}" font-family="Arial" font-size="16" font-weight="700">Lower</text>
@@ -491,6 +546,9 @@ ss_init("lower_skeletal_midline_mm", 0.0)
 # Growth parameters
 ss_init("cvms_stage", "CVMS 3")
 ss_init("treatment_duration", 24.0)  # months
+ss_init("custom_sagittal", 2.5)
+ss_init("custom_vertical", 2.0)
+ss_init("custom_transverse", 1.0)
 
 # Store remaining discrepancies
 ss_init("remaining_U_R", 0.0)
@@ -576,7 +634,7 @@ with tabs[0]:
             lower_dental_midline_mm=float(st.session_state["lower_dental_midline_mm"]),
             lower_skeletal_midline_mm=float(st.session_state["lower_skeletal_midline_mm"]),
         )
-        components.html(svg, height=620, scrolling=False)
+        components.html(svg, height=660, scrolling=False)
 
         delta_ml = float(st.session_state["lower_dental_midline_mm"]) - float(st.session_state["lower_skeletal_midline_mm"])
         st.markdown(
@@ -612,7 +670,7 @@ with tabs[1]:
             options=list(GROWTH_DATA.keys()),
             index=3,  # Default to CVMS 3
             key="cvms_stage",
-            help="Cervical Vertebral Maturation Stage from lateral cephalogram"
+            help="Cervical Vertebral Maturation Stage from lateral cephalogram, or select Custom to enter your own values"
         )
         
         stage_info = GROWTH_DATA[cvms_stage]
@@ -632,24 +690,70 @@ with tabs[1]:
             key="treatment_duration",
             help="Typical orthodontic treatment: 18-36 months"
         )
+        
+        # Custom growth inputs (only show if Custom is selected)
+        if cvms_stage == "Custom":
+            st.markdown('<div class="band-blue"><b>Custom Growth Rates (mm/year)</b></div>', unsafe_allow_html=True)
+            st.number_input(
+                "Sagittal growth (A-P) mm/year",
+                min_value=0.0,
+                max_value=10.0,
+                value=2.5,
+                step=0.25,
+                key="custom_sagittal",
+                help="Anterior-posterior mandibular growth rate"
+            )
+            st.number_input(
+                "Vertical growth mm/year",
+                min_value=0.0,
+                max_value=10.0,
+                value=2.0,
+                step=0.25,
+                key="custom_vertical",
+                help="Vertical facial growth rate"
+            )
+            st.number_input(
+                "Transverse growth mm/year",
+                min_value=0.0,
+                max_value=5.0,
+                value=1.0,
+                step=0.25,
+                key="custom_transverse",
+                help="Lateral arch width growth rate"
+            )
     
     with col2:
         st.markdown("### Growth Prediction")
         
-        # Calculate growth
+        # Calculate growth with custom values if applicable
         growth_calc = calculate_growth_space_equivalent(
             cvms_stage, 
             treatment_duration, 
-            include_growth
+            include_growth,
+            custom_sagittal=float(st.session_state.get("custom_sagittal", 0.0)),
+            custom_vertical=float(st.session_state.get("custom_vertical", 0.0)),
+            custom_transverse=float(st.session_state.get("custom_transverse", 0.0))
         )
         
         if include_growth:
+            # Get the rates being used
+            if cvms_stage == "Custom":
+                sag_rate = float(st.session_state.get("custom_sagittal", 0.0))
+                vert_rate = float(st.session_state.get("custom_vertical", 0.0))
+                trans_rate = float(st.session_state.get("custom_transverse", 0.0))
+                rate_source = "Custom"
+            else:
+                sag_rate = stage_info['sagittal']
+                vert_rate = stage_info['vertical']
+                trans_rate = stage_info['transverse']
+                rate_source = cvms_stage
+            
             st.markdown(
                 f"<div class='band-blue'>"
-                f"<b>Annual Growth Rates ({cvms_stage}):</b><br>"
-                f"• Sagittal (A-P): {stage_info['sagittal']:.2f} mm/year<br>"
-                f"• Vertical: {stage_info['vertical']:.2f} mm/year<br>"
-                f"• Transverse: {stage_info['transverse']:.2f} mm/year"
+                f"<b>Annual Growth Rates ({rate_source}):</b><br>"
+                f"• Sagittal (A-P): {sag_rate:.2f} mm/year<br>"
+                f"• Vertical: {vert_rate:.2f} mm/year<br>"
+                f"• Transverse: {trans_rate:.2f} mm/year"
                 f"</div>",
                 unsafe_allow_html=True
             )
@@ -716,7 +820,14 @@ with tabs[2]:
     # Calculate growth space
     cvms_stage = st.session_state["cvms_stage"]
     treatment_duration = st.session_state["treatment_duration"]
-    growth_calc = calculate_growth_space_equivalent(cvms_stage, treatment_duration, include_growth)
+    growth_calc = calculate_growth_space_equivalent(
+        cvms_stage, 
+        treatment_duration, 
+        include_growth,
+        custom_sagittal=float(st.session_state.get("custom_sagittal", 0.0)),
+        custom_vertical=float(st.session_state.get("custom_vertical", 0.0)),
+        custom_transverse=float(st.session_state.get("custom_transverse", 0.0))
+    )
     
     growth_label = f"Growth ({cvms_stage}, {treatment_duration:.0f}mo) [ON]" if include_growth else "Growth [OFF]"
     growth_U_total = growth_calc["upper_total"]
