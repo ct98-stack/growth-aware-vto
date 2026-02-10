@@ -1,6 +1,7 @@
 # vto_growth_app.py
 # Growth-aware Dental VTO (McLaughlin/Dolphin-inspired) — Upper + Lower arches with separate calculations
 # Adds (LOWER ONLY): dental midline + skeletal midline (numbers track with LOWER DENTAL midline)
+# ENHANCED: CVMS-based growth prediction with toggle
 
 import streamlit as st
 import pandas as pd
@@ -56,11 +57,94 @@ h1 {letter-spacing: -0.03em; margin-bottom: 0.2rem;}
   margin: 10px 0 10px 0;
   font-weight: 750;
 }
+.band-purple {
+  background: rgba(138, 43, 226, .08);
+  border: 1px solid rgba(138, 43, 226, .18);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin: 10px 0 10px 0;
+  font-weight: 750;
+}
 .hint {color: rgba(49,51,63,0.65); font-size: 0.92rem;}
 hr {border: none; border-top: 1px solid rgba(49,51,63,.12); margin: 18px 0;}
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
+
+
+# -----------------------------
+# Growth prediction data
+# -----------------------------
+GROWTH_DATA = {
+    "No growth remaining": {"sagittal": 0.0, "vertical": 0.0, "transverse": 0.0, "description": "Adult patient, no further growth expected"},
+    "CVMS 1": {"sagittal": 1.75, "vertical": 2.25, "transverse": 1.25, "description": "Pre-pubertal, early maturation"},
+    "CVMS 2": {"sagittal": 2.5, "vertical": 2.25, "transverse": 1.25, "description": "Pre-pubertal, late maturation"},
+    "CVMS 3": {"sagittal": 3.75, "vertical": 3.5, "transverse": 1.75, "description": "Pubertal peak growth"},
+    "CVMS 4": {"sagittal": 2.5, "vertical": 2.25, "transverse": 1.25, "description": "Post-pubertal, declining growth"},
+    "CVMS 5": {"sagittal": 1.0, "vertical": 1.25, "transverse": 0.75, "description": "Late adolescent, minimal growth"},
+    "CVMS 6": {"sagittal": 0.25, "vertical": 0.25, "transverse": 0.25, "description": "Growth completion"},
+}
+
+
+def calculate_growth_space_equivalent(cvms_stage: str, treatment_duration: float, include_growth: bool) -> dict:
+    """
+    Calculate space equivalent from growth based on CVMS stage.
+    
+    Mathematical approach:
+    - Sagittal growth (A-P): Creates space as mandible advances
+      * Upper receives 30% (maxillary contribution)
+      * Lower receives 70% (mandibular advancement)
+    - Vertical growth: Affects curve of Spee but NOT directly added to space
+    - Transverse growth: Direct bilateral expansion
+      * Multiplied by 2.0 (both sides)
+      * Split equally between arches
+    
+    Returns dict with upper_total, lower_total, and breakdown
+    """
+    if not include_growth:
+        return {
+            "upper_total": 0.0,
+            "lower_total": 0.0,
+            "sagittal": 0.0,
+            "vertical": 0.0,
+            "transverse": 0.0,
+            "upper_from_sagittal": 0.0,
+            "lower_from_sagittal": 0.0,
+            "upper_from_transverse": 0.0,
+            "lower_from_transverse": 0.0,
+        }
+    
+    data = GROWTH_DATA[cvms_stage]
+    
+    # Growth over treatment duration (mm)
+    sagittal_growth = data["sagittal"] * treatment_duration
+    vertical_growth = data["vertical"] * treatment_duration
+    transverse_growth = data["transverse"] * treatment_duration
+    
+    # Space equivalent calculations
+    # Sagittal: 30% upper, 70% lower (reflects differential contribution)
+    upper_from_sagittal = sagittal_growth * 0.3
+    lower_from_sagittal = sagittal_growth * 0.7
+    
+    # Transverse: bilateral (×2), split equally
+    upper_from_transverse = transverse_growth * 2.0
+    lower_from_transverse = transverse_growth * 2.0
+    
+    # Total space gained per arch
+    upper_total = upper_from_sagittal + upper_from_transverse
+    lower_total = lower_from_sagittal + lower_from_transverse
+    
+    return {
+        "upper_total": upper_total,
+        "lower_total": lower_total,
+        "sagittal": sagittal_growth,
+        "vertical": vertical_growth,
+        "transverse": transverse_growth,
+        "upper_from_sagittal": upper_from_sagittal,
+        "lower_from_sagittal": lower_from_sagittal,
+        "upper_from_transverse": upper_from_transverse,
+        "lower_from_transverse": lower_from_transverse,
+    }
 
 
 # -----------------------------
@@ -205,7 +289,7 @@ def initial_position_svg(
 
 
 # -----------------------------
-# Step 3 SVG (TRUE Upper vs Lower rows)
+# Step 3 SVG
 # -----------------------------
 def proposed_movement_svg_two_arch(
     u_r6: float, u_r3: float, u_inc: float, u_l3: float, u_l6: float,
@@ -318,7 +402,6 @@ def proposed_movement_svg_two_arch(
     return svg
 
 
-
 # -----------------------------
 # Movement allocator (MVP — replace later with McLaughlin rules)
 # -----------------------------
@@ -375,9 +458,9 @@ ss_init("upper_midline_mm", 0.0)
 ss_init("lower_dental_midline_mm", 0.0)
 ss_init("lower_skeletal_midline_mm", 0.0)
 
-# Growth inputs (space equivalent per arch total)
-ss_init("growth_upper_total", 0.0)
-ss_init("growth_lower_total", 0.0)
+# Growth parameters
+ss_init("cvms_stage", "CVMS 3")
+ss_init("treatment_duration", 2.0)
 
 # Store remaining discrepancies
 ss_init("remaining_U_R", 0.0)
@@ -389,8 +472,8 @@ ss_init("remaining_L_L", 0.0)
 # -----------------------------
 # Sidebar
 # -----------------------------
-st.sidebar.markdown("## Global")
-include_growth = st.sidebar.checkbox("Include growth (space equiv)", value=st.session_state["include_growth"], key="include_growth")
+st.sidebar.markdown("## Global Settings")
+include_growth = st.sidebar.checkbox("✨ Include growth prediction", value=st.session_state["include_growth"], key="include_growth")
 st.sidebar.markdown("---")
 st.sidebar.markdown("<div class='hint'>Sign convention: <b>Crowding = negative</b>, spacing = positive. Space gained rows are positive. Goal: Remaining ≈ 0.</div>", unsafe_allow_html=True)
 
@@ -399,9 +482,9 @@ st.sidebar.markdown("<div class='hint'>Sign convention: <b>Crowding = negative</
 # Header
 # -----------------------------
 st.markdown("# Growth-aware Dental VTO (McLaughlin-inspired)")
-st.markdown("<div class='small-muted'>Upper and lower arches calculated separately. Lower arch includes dental + skeletal midline; midline discrepancy numbers track with the lower dental midline.</div>", unsafe_allow_html=True)
+st.markdown("<div class='small-muted'>Upper and lower arches calculated separately. Lower arch includes dental + skeletal midline; midline discrepancy numbers track with the lower dental midline. <b>Growth prediction integrated via CVMS staging.</b></div>", unsafe_allow_html=True)
 
-tabs = st.tabs(["Step 1: Initial Tooth Positions", "Step 2: Upper + Lower Arch Discrepancy", "Step 3: Determining Movement"])
+tabs = st.tabs(["Step 1: Initial Tooth Positions", "Step 1B: Growth Assessment", "Step 2: Upper + Lower Arch Discrepancy", "Step 3: Determining Movement"])
 
 
 # =========================================================
@@ -474,9 +557,123 @@ with tabs[0]:
 
 
 # =========================================================
-# STEP 2
+# STEP 1B: GROWTH ASSESSMENT
 # =========================================================
 with tabs[1]:
+    st.markdown('<div class="panel"><div class="panel-title">Step 1B — Growth Assessment (CVMS-Based)</div>', unsafe_allow_html=True)
+    
+    st.markdown(
+        "<div class='band-purple'>"
+        "<b>Growth Prediction:</b> Based on Cervical Vertebral Maturation Stage (CVMS) and estimated treatment duration. "
+        "Growth is converted to space equivalent and integrated into arch discrepancy calculations."
+        "</div>",
+        unsafe_allow_html=True
+    )
+    
+    if not include_growth:
+        st.warning("⚠️ Growth prediction is currently **disabled**. Enable it in the sidebar to use this feature.")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("### Patient Growth Stage")
+        cvms_stage = st.selectbox(
+            "CVMS Stage",
+            options=list(GROWTH_DATA.keys()),
+            index=3,  # Default to CVMS 3
+            key="cvms_stage",
+            help="Cervical Vertebral Maturation Stage from lateral cephalogram"
+        )
+        
+        stage_info = GROWTH_DATA[cvms_stage]
+        st.markdown(
+            f"<div class='band-gray'>"
+            f"<b>{cvms_stage}:</b> {stage_info['description']}"
+            f"</div>",
+            unsafe_allow_html=True
+        )
+        
+        treatment_duration = st.number_input(
+            "Expected treatment duration (years)",
+            min_value=0.5,
+            max_value=5.0,
+            value=2.0,
+            step=0.5,
+            key="treatment_duration",
+            help="Typical orthodontic treatment: 1.5-3.0 years"
+        )
+    
+    with col2:
+        st.markdown("### Growth Prediction")
+        
+        # Calculate growth
+        growth_calc = calculate_growth_space_equivalent(
+            cvms_stage, 
+            treatment_duration, 
+            include_growth
+        )
+        
+        if include_growth:
+            st.markdown(
+                f"<div class='band-blue'>"
+                f"<b>Annual Growth Rates ({cvms_stage}):</b><br>"
+                f"• Sagittal (A-P): {stage_info['sagittal']:.2f} mm/year<br>"
+                f"• Vertical: {stage_info['vertical']:.2f} mm/year<br>"
+                f"• Transverse: {stage_info['transverse']:.2f} mm/year"
+                f"</div>",
+                unsafe_allow_html=True
+            )
+            
+            st.markdown(
+                f"<div class='band-green'>"
+                f"<b>Total Growth Over {treatment_duration} Years:</b><br>"
+                f"• Sagittal: {growth_calc['sagittal']:.2f} mm<br>"
+                f"• Vertical: {growth_calc['vertical']:.2f} mm<br>"
+                f"• Transverse: {growth_calc['transverse']:.2f} mm"
+                f"</div>",
+                unsafe_allow_html=True
+            )
+        else:
+            st.info("Enable growth prediction in sidebar to see calculations")
+    
+    # Mathematical explanation
+    st.markdown("---")
+    st.markdown("### 📊 Mathematical Integration")
+    
+    st.markdown(
+        "<div class='band-gray'>"
+        "<b>How growth converts to space equivalent:</b><br><br>"
+        "<b>1. Sagittal Growth (A-P mandibular advancement):</b><br>"
+        "   • Upper arch: receives 30% of sagittal growth<br>"
+        "   • Lower arch: receives 70% of sagittal growth<br>"
+        "   <span class='hint'>Rationale: Mandibular advancement creates more anterior space in lower arch</span><br><br>"
+        "<b>2. Transverse Growth (lateral expansion):</b><br>"
+        "   • Each arch: transverse growth × 2.0 (bilateral)<br>"
+        "   <span class='hint'>Rationale: Growth occurs on both left and right sides</span><br><br>"
+        "<b>3. Vertical Growth:</b><br>"
+        "   • Not directly converted to space equivalent<br>"
+        "   <span class='hint'>Affects curve of Spee and overbite, but not arch length</span>"
+        "</div>",
+        unsafe_allow_html=True
+    )
+    
+    if include_growth:
+        breakdown_data = pd.DataFrame([
+            ["Sagittal contribution", f"{growth_calc['upper_from_sagittal']:.2f}", f"{growth_calc['lower_from_sagittal']:.2f}"],
+            ["Transverse contribution", f"{growth_calc['upper_from_transverse']:.2f}", f"{growth_calc['lower_from_transverse']:.2f}"],
+            ["<b>Total Space Equivalent</b>", f"<b>{growth_calc['upper_total']:.2f}</b>", f"<b>{growth_calc['lower_total']:.2f}</b>"],
+        ], columns=["Component", "Upper (mm)", "Lower (mm)"])
+        
+        st.markdown("### Space Equivalent Breakdown")
+        st.markdown(breakdown_data.to_html(escape=False, index=False), unsafe_allow_html=True)
+    
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
+# =========================================================
+# STEP 2
+# =========================================================
+with tabs[2]:
     st.markdown('<div class="panel"><div class="panel-title">Step 2 — Discrepancy Calculations (Upper + Lower)</div>', unsafe_allow_html=True)
     st.markdown(
         "<div class='band-gray'>"
@@ -486,22 +683,28 @@ with tabs[1]:
         unsafe_allow_html=True
     )
 
-    # Growth totals
-    st.markdown('<div class="band-green">Growth (space equivalent)</div>', unsafe_allow_html=True)
-    g1, g2 = st.columns(2)
-    with g1:
-        st.number_input("Upper growth space equiv total (mm)", step=0.1, key="growth_upper_total")
-    with g2:
-        st.number_input("Lower growth space equiv total (mm)", step=0.1, key="growth_lower_total")
-
-    growth_label = "Growth (space equiv) [ON]" if include_growth else "Growth (space equiv) [OFF]"
-    growth_U_total = float(st.session_state["growth_upper_total"]) if include_growth else 0.0
-    growth_L_total = float(st.session_state["growth_lower_total"]) if include_growth else 0.0
+    # Calculate growth space
+    cvms_stage = st.session_state["cvms_stage"]
+    treatment_duration = st.session_state["treatment_duration"]
+    growth_calc = calculate_growth_space_equivalent(cvms_stage, treatment_duration, include_growth)
+    
+    growth_label = f"Growth ({cvms_stage}, {treatment_duration}y) [ON]" if include_growth else "Growth [OFF]"
+    growth_U_total = growth_calc["upper_total"]
+    growth_L_total = growth_calc["lower_total"]
 
     growth_U_R = growth_U_total / 2.0
     growth_U_L = growth_U_total / 2.0
     growth_L_R = growth_L_total / 2.0
     growth_L_L = growth_L_total / 2.0
+    
+    if include_growth:
+        st.markdown(
+            f"<div class='band-purple'>"
+            f"<b>Growth Space Equivalent:</b> Upper = {growth_U_total:.2f} mm total ({growth_U_R:.2f} mm per side), "
+            f"Lower = {growth_L_total:.2f} mm total ({growth_L_R:.2f} mm per side)"
+            f"</div>",
+            unsafe_allow_html=True
+        )
 
     st.markdown("<hr/>", unsafe_allow_html=True)
 
@@ -509,7 +712,6 @@ with tabs[1]:
     st.markdown("## Lower Arch Discrepancy")
 
     # Lower midline component tracks lower dental midline
-    # Convention: Right midline component = +dental_midline, Left = -dental_midline (as in Dolphin screenshot style)
     lower_dental_midline = float(st.session_state["lower_dental_midline_mm"])
     midline_L_R = +lower_dental_midline
     midline_L_L = -lower_dental_midline
@@ -658,7 +860,7 @@ with tabs[1]:
 # =========================================================
 # STEP 3
 # =========================================================
-with tabs[2]:
+with tabs[3]:
     st.markdown('<div class="panel"><div class="panel-title">Step 3 — Proposed Dental Movement</div>', unsafe_allow_html=True)
     st.markdown(
         "<div class='band-gray'>"
