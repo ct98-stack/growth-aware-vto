@@ -682,98 +682,110 @@ with tabs[1]:
 # =========================================================
 # STEP 3
 # =========================================================
-with tabs[2]:
-    left, right = st.columns([1.0, 1.35], gap="large")
+def proposed_movement_svg_two_arch(
+    # Upper movements (mm): + = to patient LEFT, - = to patient RIGHT (consistent diagram sign)
+    u_r6: float, u_r3: float, u_inc: float, u_l3: float, u_l6: float,
+    # Lower movements (mm)
+    l_r6: float, l_r3: float, l_inc: float, l_l3: float, l_l6: float,
+) -> str:
+    W, H = 1000, 620
+    cx = W // 2
 
-    # Pull stored remaining
-    remU_R = float(st.session_state["remaining_U_R"])
-    remU_L = float(st.session_state["remaining_U_L"])
-    remL_R = float(st.session_state["remaining_L_R"])
-    remL_L = float(st.session_state["remaining_L_L"])
+    # X positions: R6, R3, Inc, L3, L6
+    xs = [140, 350, cx, 650, 860]
+    tooth_labels = ["6", "3", "1", "3", "6"]
 
-    with left:
-        st.markdown('<div class="panel"><div class="panel-title">Step 3 — Determine Expected Movement</div>', unsafe_allow_html=True)
-        st.markdown(
-            "<div class='band-gray'>"
-            "<b>MVP allocator:</b> This computes a plausible movement distribution across 6 / 3 / incisors from remaining discrepancy. "
-            "We will replace this later with McLaughlin/Dolphin rules. "
-            "<br><span class='hint'>Upper and Lower are computed separately from their own remaining discrepancies.</span>"
-            "</div>",
-            unsafe_allow_html=True
-        )
+    # Vertical layout (roomy + non-overlapping)
+    title_y = 48
 
-        st.markdown('<div class="band-blue">Treat-to (Case-level)</div>', unsafe_allow_html=True)
+    yU_label = 95
+    yU_line  = 150
+    yU_tooth = 215
+    yU_arrow = 300
+    yU_num   = 352
 
-        allow_asym = st.checkbox("Allow asymmetry (different Right vs Left)", value=False, key="allow_asym")
-        
-        if not allow_asym:
-            treat_case = st.radio("Treat to", ["Class I", "Class II", "Class III"], index=1, horizontal=True, key="treat_case")
-            treat_R = treat_case
-            treat_L = treat_case
+    yL_label = 365
+    yL_line  = 420
+    yL_tooth = 485
+    yL_arrow = 570
+    yL_num   = 602  # near bottom, still visible
+
+    def clean(v: float) -> float:
+        return 0.0 if abs(v) < 0.05 else float(v)
+
+    def fmt(v: float) -> str:
+        return f"{clean(v):.1f}"
+
+    def tooth(x: int, y: int, lab: str) -> str:
+        # simple tooth silhouette (clean + readable)
+        return f"""
+        <path d="M {x-24} {y-52}
+                 C {x-42} {y-30}, {x-40} {y-2}, {x-20} {y+14}
+                 C {x-10} {y+38}, {x+10} {y+38}, {x+20} {y+14}
+                 C {x+40} {y-2}, {x+42} {y-30}, {x+24} {y-52}
+                 Z"
+              fill="white" stroke="#222" stroke-width="2.2"/>
+        <circle cx="{x}" cy="{y-14}" r="16" fill="white" stroke="#222" stroke-width="2.2"/>
+        <text x="{x}" y="{y-8}" text-anchor="middle"
+              font-family="Arial" font-size="16" font-weight="900" fill="#111">{lab}</text>
+        """
+
+    def arrow(x: int, y: int, v: float) -> str:
+        v = clean(v)
+        # arrow length scales but stays modest
+        L = max(22, min(70, abs(v) * 18))
+        if v > 0:
+            x1, x2 = x - 10, x - 10 + L
+        elif v < 0:
+            x1, x2 = x + 10, x + 10 - L
         else:
-            c1, c2 = st.columns(2)
-            with c1:
-                treat_R = st.radio("Right", ["Class I", "Class II", "Class III"], index=1, horizontal=True, key="treat_case_R")
-            with c2:
-                treat_L = st.radio("Left", ["Class I", "Class II", "Class III"], index=1, horizontal=True, key="treat_case_L")
+            x1, x2 = x - 22, x + 22
 
-    with right:
-        st.markdown('<div class="panel"><div class="panel-title">Dolphin-style Diagram (Upper + Lower)</div>', unsafe_allow_html=True)
+        return f"""
+        <line x1="{x1}" y1="{y}" x2="{x2}" y2="{y}"
+              stroke="#1f77b4" stroke-width="5" marker-end="url(#arrowhead)"/>
+        """
 
-        # Allocate per side per arch
-        planU_R = expected_movement_allocation(remU_R, treat_R)
-        planU_L = expected_movement_allocation(remU_L, treat_L)
-        planL_R = expected_movement_allocation(remL_R, treat_R)
-        planL_L = expected_movement_allocation(remL_L, treat_L)
+    def num(x: int, y: int, v: float) -> str:
+        return f"""
+        <text x="{x}" y="{y}" text-anchor="middle"
+              font-family="Arial" font-size="34" font-weight="900" fill="#111">{fmt(v)}</text>
+        """
 
-        # Convert to signed movements (outward when crowding remains)
-        signU_R = outward_sign(remU_R, "R")
-        signU_L = outward_sign(remU_L, "L")
-        signL_R = outward_sign(remL_R, "R")
-        signL_L = outward_sign(remL_L, "L")
+    def row(label: str, y_label: int, y_line: int, y_tooth: int, y_arrow: int, y_num: int, vals) -> str:
+        r6, r3, inc, l3, l6 = vals
+        vs = [r6, r3, inc, l3, l6]
 
-        # Upper segments
-        U_R6 = signU_R * planU_R["6"]
-        U_R3 = signU_R * planU_R["3"]
-        U_Inc = (signU_R + signU_L) / 2.0 * ((planU_R["inc"] + planU_L["inc"]) / 2.0)
-        U_L3 = signU_L * planU_L["3"]
-        U_L6 = signU_L * planU_L["6"]
+        line = f"""<line x1="85" y1="{y_line}" x2="{W-85}" y2="{y_line}" stroke="#222" stroke-width="4"/>"""
 
-        # Lower segments
-        L_R6 = signL_R * planL_R["6"]
-        L_R3 = signL_R * planL_R["3"]
-        L_Inc = (signL_R + signL_L) / 2.0 * ((planL_R["inc"] + planL_L["inc"]) / 2.0)
-        L_L3 = signL_L * planL_L["3"]
-        L_L6 = signL_L * planL_L["6"]
+        teeth = "\n".join(tooth(x, y_tooth, lab) for x, lab in zip(xs, tooth_labels))
+        arrows = "\n".join(arrow(x, y_arrow, v) for x, v in zip(xs, vs))
+        nums = "\n".join(num(x, y_num, v) for x, v in zip(xs, vs))
 
-        svg = proposed_movement_svg_two_arch(
-            u_r6=U_R6, u_r3=U_R3, u_inc=U_Inc, u_l3=U_L3, u_l6=U_L6,
-            l_r6=L_R6, l_r3=L_R3, l_inc=L_Inc, l_l3=L_L3, l_l6=L_L6,
-        )
-        components.html(svg, height=820, scrolling=False)
+        return f"""
+        <text x="{cx}" y="{y_label}" text-anchor="middle"
+              font-family="Arial" font-size="26" font-weight="900" fill="#111">{label}</text>
+        {line}
+        {teeth}
+        {arrows}
+        {nums}
+        """
 
-        # Tables for transparency
-        dfU = pd.DataFrame(
-            [["R6", U_R6], ["R3", U_R3], ["Inc", U_Inc], ["L3", U_L3], ["L6", U_L6]],
-            columns=["Upper segment", "Expected movement (mm)"],
-        )
-        dfL = pd.DataFrame(
-            [["R6", L_R6], ["R3", L_R3], ["Inc", L_Inc], ["L3", L_L3], ["L6", L_L6]],
-            columns=["Lower segment", "Expected movement (mm)"],
-        )
+    svg = f"""
+    <svg width="100%" viewBox="0 0 {W} {H}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+          <path d="M0,0 L0,8 L8,4 z" fill="#1f77b4"/>
+        </marker>
+      </defs>
 
-        t1, t2 = st.columns(2)
-        with t1:
-            st.dataframe(dfU, use_container_width=True, hide_index=True)
-        with t2:
-            st.dataframe(dfL, use_container_width=True, hide_index=True)
+      <text x="{cx}" y="{title_y}" text-anchor="middle"
+            font-family="Arial" font-size="32" font-weight="900" fill="#111">
+        Dental VTO (Proposed Dental Movement)
+      </text>
 
-        st.markdown(
-            f"<div class='band-gray'><b>Goal check</b><br>"
-            f"Upper remaining: R {remU_R:+.2f} ({remaining_status(remU_R)}), L {remU_L:+.2f} ({remaining_status(remU_L)})<br>"
-            f"Lower remaining: R {remL_R:+.2f} ({remaining_status(remL_R)}), L {remL_L:+.2f} ({remaining_status(remL_L)})"
-            f"</div>",
-            unsafe_allow_html=True
-        )
-
-        st.markdown("</div>", unsafe_allow_html=True)
+      {row("Upper Arch", yU_label, yU_line, yU_tooth, yU_arrow, yU_num, (u_r6, u_r3, u_inc, u_l3, u_l6))}
+      {row("Lower Arch", yL_label, yL_line, yL_tooth, yL_arrow, yL_num, (l_r6, l_r3, l_inc, l_l3, l_l6))}
+    </svg>
+    """
+    return svg
