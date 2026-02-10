@@ -216,7 +216,7 @@ def initial_position_svg(
     lower_dental_midline_mm: float,
     lower_skeletal_midline_mm: float,
 ) -> str:
-    W, H = 920, 600
+    W, H = 920, 640
     cx = W // 2
 
     # two baselines
@@ -274,7 +274,7 @@ def initial_position_svg(
         else:
             x = W - 150 - val * scale
         
-        arrow_y = y - 105  # Raised higher to avoid R6/L6 boxes
+        arrow_y = y - 130  # Raised much higher to clear R6/L6 boxes completely
         arrow_length = min(80, abs(val) * 24)  # Longer arrows (was 40, 12)
         
         if val > 0:  # Molar shifted mesially (forward)
@@ -634,7 +634,7 @@ with tabs[0]:
             lower_dental_midline_mm=float(st.session_state["lower_dental_midline_mm"]),
             lower_skeletal_midline_mm=float(st.session_state["lower_skeletal_midline_mm"]),
         )
-        components.html(svg, height=660, scrolling=False)
+        components.html(svg, height=680, scrolling=False)
 
         delta_ml = float(st.session_state["lower_dental_midline_mm"]) - float(st.session_state["lower_skeletal_midline_mm"])
         st.markdown(
