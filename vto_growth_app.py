@@ -431,16 +431,27 @@ def expected_movement_allocation(remaining: float, treat_to: str) -> dict[str, f
 
 def outward_sign(rem: float, side: str) -> float:
     """
-    Defines outward direction in the diagram:
-      - Left side outward -> positive
-      - Right side outward -> negative
-    If rem < 0 (crowding remains): go outward.
-    If rem > 0 (excess space): go inward (reverse).
+    Convention: Positive = toward patient's LEFT, Negative = toward patient's RIGHT
+    
+    In the diagram (looking AT the patient):
+    - Positive values → arrows point RIGHT (toward patient's left)
+    - Negative values → arrows point LEFT (toward patient's right)
+    
+    Movement logic:
+    - If crowding (rem < 0): expand outward from midline
+    - If spacing (rem > 0): move inward toward midline
     """
     if rem == 0:
         return 0.0
-    outward = 1.0 if side == "L" else -1.0
-    return outward if rem < 0 else -outward
+    
+    if side == "R":
+        # Right side: outward (away from midline) = negative (leftward)
+        #             inward (toward midline) = positive (rightward)
+        return -1.0 if rem < 0 else 1.0
+    else:  # side == "L"
+        # Left side: outward (away from midline) = positive (rightward)
+        #            inward (toward midline) = negative (leftward)
+        return 1.0 if rem < 0 else -1.0
 
 
 # -----------------------------
@@ -894,6 +905,9 @@ with tabs[3]:
     L_remaining_R = float(st.session_state.get("remaining_L_R", 0.0))
     L_remaining_L = float(st.session_state.get("remaining_L_L", 0.0))
 
+    # Get midline values for DIRECT correction
+    lower_dental_midline = float(st.session_state.get("lower_dental_midline_mm", 0.0))
+    
     # Allocate movements for each quadrant
     U_alloc_R = expected_movement_allocation(U_remaining_R, treat_to)
     U_alloc_L = expected_movement_allocation(U_remaining_L, treat_to)
@@ -921,9 +935,19 @@ with tabs[3]:
     l_l6 = L_alloc_L["6"] * outward_sign(L_remaining_L, "L")
     l_l3 = L_alloc_L["3"] * outward_sign(L_remaining_L, "L")
     
-    # Lower incisors (average of both sides)
-    l_inc = (L_alloc_R["inc"] * outward_sign(L_remaining_R, "R") + 
-             L_alloc_L["inc"] * outward_sign(L_remaining_L, "L")) / 2.0
+    # Lower incisors - DIRECT MIDLINE CORRECTION
+    # The lower incisor movement must equal the dental midline to achieve facial coincidence
+    # We REPLACE the allocated movement with the direct midline correction
+    l_inc_from_allocation = (L_alloc_R["inc"] * outward_sign(L_remaining_R, "R") + 
+                              L_alloc_L["inc"] * outward_sign(L_remaining_L, "L")) / 2.0
+    
+    # DIRECT midline correction: move incisors by the full midline amount
+    # Sign: if dental midline is +1.5 (shifted to patient's left), 
+    # incisors must move -1.5 (toward patient's right) to center
+    l_inc = -lower_dental_midline
+    
+    # Note: We could add the allocation on top of midline correction, but clinically
+    # the primary goal is midline correction, so we use it directly
 
     # ======================================
     # SHOW SUMMARY TABLE
@@ -955,7 +979,10 @@ with tabs[3]:
         st.dataframe(lower_movements, use_container_width=True, hide_index=True)
 
     st.markdown(
-        "<div class='hint'>Positive = toward patient's left; Negative = toward patient's right</div>",
+        "<div class='hint'>"
+        "Positive = toward patient's left; Negative = toward patient's right<br>"
+        "<b>Lower incisor movement applies DIRECT midline correction</b> to achieve facial coincidence"
+        "</div>",
         unsafe_allow_html=True
     )
 
