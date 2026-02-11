@@ -1035,7 +1035,6 @@ with tabs[2]:
         st.number_input("", step=0.1, key="inc_pos_33_L", label_visibility="collapsed")
     with col_sep:
         st.markdown("<div style='border-left: 3px solid #666; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
-        st.number_input("", step=0.1, key="inc_pos_33_L", label_visibility="collapsed")
     with col4:
         st.markdown("<div style='text-align: center;'>0.0</div>", unsafe_allow_html=True)
     with col5:
@@ -1093,7 +1092,6 @@ with tabs[2]:
         st.number_input("", step=0.1, key="strip_33_L", label_visibility="collapsed")
     with col_sep:
         st.markdown("<div style='border-left: 3px solid #666; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
-        st.number_input("", step=0.1, key="strip_33_L", label_visibility="collapsed")
     with col4:
         st.number_input("", step=0.1, key="strip_77_R", label_visibility="collapsed")
     with col5:
@@ -1109,7 +1107,6 @@ with tabs[2]:
         st.number_input("", step=0.1, key="exp_33_L", label_visibility="collapsed")
     with col_sep:
         st.markdown("<div style='border-left: 3px solid #666; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
-        st.number_input("", step=0.1, key="exp_33_L", label_visibility="collapsed")
     with col4:
         st.number_input("", step=0.1, key="exp_77_R", label_visibility="collapsed")
     with col5:
@@ -1125,7 +1122,6 @@ with tabs[2]:
         st.number_input("", step=0.1, key="dist_33_L", label_visibility="collapsed")
     with col_sep:
         st.markdown("<div style='border-left: 3px solid #666; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
-        st.number_input("", step=0.1, key="dist_33_L", label_visibility="collapsed")
     with col4:
         st.number_input("", step=0.1, key="dist_77_R", label_visibility="collapsed")
     with col5:
@@ -1141,7 +1137,6 @@ with tabs[2]:
         st.number_input("", step=0.1, key="ext_33_L", label_visibility="collapsed")
     with col_sep:
         st.markdown("<div style='border-left: 3px solid #666; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
-        st.number_input("", step=0.1, key="ext_33_L", label_visibility="collapsed")
     with col4:
         st.number_input("", step=0.1, key="ext_77_R", label_visibility="collapsed")
     with col5:
