@@ -633,12 +633,12 @@ with tabs[0]:
 
         m1, m2 = st.columns(2)
         with m1:
-        st.number_input(
+          st.number_input(
             "Lower dental midline (mm)", 
             step=0.1, 
             key="lower_dental_midline_mm",
             help="Positive = midline shifted to patient's RIGHT. Negative = shifted to patient's LEFT."
-        )
+          )
         with m2:
             st.number_input("Lower skeletal midline (mm)", step=0.1, key="lower_skeletal_midline_mm")
 
