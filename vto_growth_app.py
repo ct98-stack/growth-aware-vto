@@ -975,10 +975,17 @@ with tabs[2]:
         st.number_input("", step=0.1, key="ant_cs_33_L", label_visibility="collapsed")
     with col_sep:
         st.markdown("<div style='border-left: 3px solid #666; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
+    
+    # Read values after inputs are created
+    ant_cs_R = float(st.session_state.get('ant_cs_33_R', 0.0))
+    ant_cs_L = float(st.session_state.get('ant_cs_33_L', 0.0))
+    
     with col4:
-        st.markdown("<div style='text-align: center;'>—</div>", unsafe_allow_html=True)
+        # Mirror from 3-3
+        st.markdown(f"<div style='text-align: center; padding: 6px; background: #e3f2fd; border-radius: 4px;'>{ant_cs_R:.2f}</div>", unsafe_allow_html=True)
     with col5:
-        st.markdown("<div style='text-align: center;'>—</div>", unsafe_allow_html=True)
+        # Mirror from 3-3
+        st.markdown(f"<div style='text-align: center; padding: 6px; background: #e3f2fd; border-radius: 4px;'>{ant_cs_L:.2f}</div>", unsafe_allow_html=True)
     
     # Post. Crowding/Spacing
     col1, col2, col3, col_sep, col4, col5 = st.columns([2, 0.5, 0.5, 0.2, 0.5, 0.5])
@@ -1096,14 +1103,16 @@ with tabs[2]:
                     (-lower_dental_midline) + 
                     float(st.session_state["inc_pos_33_L"]))
     
-    # 7-7 includes: Post C/S + C/S Bicusp + C/S Molars + Curve of Spee + Midline + Incisor Position (from 3-3)
-    initial_77_R = (float(st.session_state["post_cs_77_R"]) + 
+    # 7-7 includes: Ant C/S + Post C/S + C/S Bicusp + C/S Molars + COS + Midline + Inc Pos (from 3-3)
+    initial_77_R = (float(st.session_state["ant_cs_33_R"]) +  # Ant C/S from 3-3
+                    float(st.session_state["post_cs_77_R"]) + 
                     float(st.session_state["cos_bicusp_77_R"]) + 
                     float(st.session_state["cos_molar_77_R"]) +
                     float(st.session_state["cos_33_R"]) +  # COS from 3-3
                     lower_dental_midline +  # Midline from 3-3
                     float(st.session_state["inc_pos_33_R"]))  # Inc Pos from 3-3
-    initial_77_L = (float(st.session_state["post_cs_77_L"]) + 
+    initial_77_L = (float(st.session_state["ant_cs_33_L"]) +  # Ant C/S from 3-3
+                    float(st.session_state["post_cs_77_L"]) + 
                     float(st.session_state["cos_bicusp_77_L"]) + 
                     float(st.session_state["cos_molar_77_L"]) +
                     float(st.session_state["cos_33_L"]) +  # COS from 3-3
