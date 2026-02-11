@@ -410,7 +410,13 @@ def proposed_movement_svg_two_arch(
               font-family="Arial" font-size="16" font-weight="900" fill="#111">{lab}</text>
         """
 
-    def arrow(x: int, y: int, v: float) -> str:
+    def arrow(x: int, y: int, v: float, tooth_idx: int) -> str:
+        """
+        tooth_idx: 0=R6, 1=R3, 2=Inc, 3=L3, 4=L6
+        Right side (0,1): positive values point RIGHT
+        Left side (3,4): positive values point LEFT
+        Incisors (2): follow value sign directly
+        """
         v = clean(v)
         # Don't show arrow if movement is essentially zero
         if abs(v) < 0.05:
@@ -418,18 +424,26 @@ def proposed_movement_svg_two_arch(
         
         L = max(22, min(70, abs(v) * 18))
         
-        # Convention for tooth movement:
-        # Positive = Closing extraction space = Move LEFT (mesially/anteriorly)
-        # Negative = Crowding expansion = Move in direction of crowding
+        # Determine which side this tooth is on
+        is_right_side = tooth_idx in [0, 1]  # R6, R3
+        is_left_side = tooth_idx in [3, 4]   # L3, L6
         
         if v > 0:
-            # Extraction: teeth close space by moving LEFT
-            x1, x2 = x + 10, x + 10 - L  # Arrow points LEFT
-        elif v < 0:
-            # Crowding: teeth move in direction indicated by negative value
-            x1, x2 = x - 10, x - 10 + L  # Arrow points RIGHT
+            # Positive = closing extraction space
+            if is_right_side:
+                # Right side closes RIGHT (toward their extraction)
+                x1, x2 = x - 10, x - 10 + L  # Arrow points RIGHT
+            else:  # Left side or incisors
+                # Left side closes LEFT (toward their extraction)
+                x1, x2 = x + 10, x + 10 - L  # Arrow points LEFT
         else:
-            return ""  # No arrow for exactly zero
+            # Negative = crowding expansion
+            if is_right_side:
+                # Right side expands LEFT (away from midline)
+                x1, x2 = x + 10, x + 10 - L  # Arrow points LEFT
+            else:  # Left side or incisors
+                # Left side expands RIGHT (away from midline)
+                x1, x2 = x - 10, x - 10 + L  # Arrow points RIGHT
 
         return f"""
         <line x1="{x1}" y1="{y}" x2="{x2}" y2="{y}"
@@ -454,7 +468,7 @@ def proposed_movement_svg_two_arch(
         
         line = f"""<line x1="85" y1="{y_line}" x2="{W-85}" y2="{y_line}" stroke="#222" stroke-width="4"/>"""
         teeth = "\n".join(tooth(x, y_tooth, lab) for x, lab in zip(xs, tooth_labels))
-        arrows = "\n".join(arrow(x, y_arrow, v) for x, v in zip(xs, vs))
+        arrows = "\n".join(arrow(x, y_arrow, v, i) for i, (x, v) in enumerate(zip(xs, vs)))
         nums = "\n".join(num(x, y_num, v) for x, v in zip(xs, vs))
 
         return f"""
