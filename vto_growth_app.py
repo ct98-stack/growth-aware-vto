@@ -479,23 +479,33 @@ def proposed_movement_svg_two_arch(
 # -----------------------------
 def expected_movement_allocation(remaining: float, treat_to: str) -> dict[str, float]:
     """
-    remaining < 0 means still crowded (need space).
-    Allocates magnitude across segments (6, 3, inc).
+    Dolphin VTO logic: In crowding (remaining < 0), ALL teeth move by the FULL amount.
+    In extraction/spacing (remaining > 0), movements are differentiated.
+    
+    remaining < 0 = crowded (need expansion) - all teeth move same amount
+    remaining > 0 = spacing/extraction - distribute differently
     """
-    if treat_to == "Class II":
-        ant_w, post_w = 0.65, 0.35
-    elif treat_to == "Class III":
-        ant_w, post_w = 0.45, 0.55
-    else:
-        ant_w, post_w = 0.55, 0.45
-
     mag = abs(remaining)
-    anterior = mag * ant_w
-    posterior = mag * post_w
-    inc = anterior * 0.55
-    canine = anterior * 0.45
-    molar = posterior
-    return {"6": molar, "3": canine, "inc": inc}
+    
+    if remaining < 0:
+        # CROWDING: All teeth expand by the full amount
+        # This matches Dolphin behavior
+        return {"6": mag, "3": mag, "inc": mag}
+    else:
+        # EXTRACTION/SPACING: Use allocation weights
+        if treat_to == "Class II":
+            ant_w, post_w = 0.65, 0.35
+        elif treat_to == "Class III":
+            ant_w, post_w = 0.45, 0.55
+        else:
+            ant_w, post_w = 0.55, 0.45
+        
+        anterior = mag * ant_w
+        posterior = mag * post_w
+        inc = anterior * 0.55
+        canine = anterior * 0.45
+        molar = posterior
+        return {"6": molar, "3": canine, "inc": inc}
 
 
 def movement_sign(rem: float, side: str, tooth_type: str) -> float:
@@ -863,25 +873,27 @@ with tabs[2]:
     # Create table-style layout
     st.markdown("### Lower Arch Discrepancy")
     
-    # Column headers
-    col_header1, col_header2, col_header3, col_header4 = st.columns([2, 1, 1, 2])
-    with col_header1:
-        st.markdown("<div style='text-align: center; font-weight: bold; margin-bottom: 10px;'></div>", unsafe_allow_html=True)
-    with col_header2:
-        st.markdown("<div style='text-align: center; font-weight: bold; margin-bottom: 10px;'>3 to 3</div>", unsafe_allow_html=True)
-    with col_header3:
-        st.markdown("<div style='text-align: center; font-weight: bold; margin-bottom: 10px;'>7 to 7</div>", unsafe_allow_html=True)
+    # Main section headers spanning R+L columns
+    col_label, col_33_span, col_sep_main, col_77_span = st.columns([2, 1, 0.2, 1])
+    with col_33_span:
+        st.markdown("<div style='text-align: center; font-weight: bold; font-size: 18px; margin-bottom: 8px; color: #1e6fff;'>3 to 3</div>", unsafe_allow_html=True)
+    with col_sep_main:
+        st.markdown("<div style='border-left: 3px solid #666; height: 30px; margin: 0 auto;'></div>", unsafe_allow_html=True)
+    with col_77_span:
+        st.markdown("<div style='text-align: center; font-weight: bold; font-size: 18px; margin-bottom: 8px; color: #1e6fff;'>7 to 7</div>", unsafe_allow_html=True)
     
     # Sub-headers (R and L)
-    col_sh1, col_r_33, col_l_33, col_r_77, col_l_77 = st.columns([2, 0.5, 0.5, 0.5, 0.5])
+    col_sh1, col_r_33, col_l_33, col_sep, col_r_77, col_l_77 = st.columns([2, 0.5, 0.5, 0.2, 0.5, 0.5])
     with col_r_33:
-        st.markdown("<div style='text-align: center; font-weight: bold;'>R</div>", unsafe_allow_html=True)
+        st.markdown("<div style='text-align: center; font-weight: bold; font-size: 14px;'>R</div>", unsafe_allow_html=True)
     with col_l_33:
-        st.markdown("<div style='text-align: center; font-weight: bold;'>L</div>", unsafe_allow_html=True)
+        st.markdown("<div style='text-align: center; font-weight: bold; font-size: 14px;'>L</div>", unsafe_allow_html=True)
+    with col_sep:
+        st.markdown("<div style='border-left: 3px solid #666; height: 25px; margin: 0 auto;'></div>", unsafe_allow_html=True)
     with col_r_77:
-        st.markdown("<div style='text-align: center; font-weight: bold;'>R</div>", unsafe_allow_html=True)
+        st.markdown("<div style='text-align: center; font-weight: bold; font-size: 14px;'>R</div>", unsafe_allow_html=True)
     with col_l_77:
-        st.markdown("<div style='text-align: center; font-weight: bold;'>L</div>", unsafe_allow_html=True)
+        st.markdown("<div style='text-align: center; font-weight: bold; font-size: 14px;'>L</div>", unsafe_allow_html=True)
     
     # Initialize session state for all inputs
     ss_init("ant_cs_33_R", 0.0)
@@ -917,80 +929,97 @@ with tabs[2]:
     st.markdown("<div style='background: rgba(30, 111, 255, .08); padding: 8px; border-radius: 8px; margin: 10px 0;'>", unsafe_allow_html=True)
     
     # Ant. Crowding/Spacing
-    col1, col2, col3, col4, col5 = st.columns([2, 0.5, 0.5, 0.5, 0.5])
+    col1, col2, col3, col_sep, col4, col5 = st.columns([2, 0.5, 0.5, 0.2, 0.5, 0.5])
     with col1:
         st.markdown("**Ant. Crowding/Spacing**")
     with col2:
         st.number_input("", step=0.1, key="ant_cs_33_R", label_visibility="collapsed")
     with col3:
         st.number_input("", step=0.1, key="ant_cs_33_L", label_visibility="collapsed")
+        st.number_input("", step=0.1, key="ant_cs_33_L", label_visibility="collapsed")
+    with col_sep:
+        st.markdown("<div style='border-left: 3px solid #666; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
     with col4:
         st.markdown("<div style='text-align: center;'>—</div>", unsafe_allow_html=True)
     with col5:
         st.markdown("<div style='text-align: center;'>—</div>", unsafe_allow_html=True)
     
     # Post. Crowding/Spacing
-    col1, col2, col3, col4, col5 = st.columns([2, 0.5, 0.5, 0.5, 0.5])
+    col1, col2, col3, col_sep, col4, col5 = st.columns([2, 0.5, 0.5, 0.2, 0.5, 0.5])
     with col1:
         st.markdown("**Post. Crowding/Spacing**")
     with col2:
         st.markdown("<div style='text-align: center;'>—</div>", unsafe_allow_html=True)
     with col3:
         st.markdown("<div style='text-align: center;'>—</div>", unsafe_allow_html=True)
+        st.markdown("<div style='text-align: center;'>—</div>", unsafe_allow_html=True)
+    with col_sep:
+        st.markdown("<div style='border-left: 3px solid #666; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
     with col4:
         st.number_input("", step=0.1, key="post_cs_77_R", label_visibility="collapsed")
     with col5:
         st.number_input("", step=0.1, key="post_cs_77_L", label_visibility="collapsed")
     
     # C/S Bicusp/E
-    col1, col2, col3, col4, col5 = st.columns([2, 0.5, 0.5, 0.5, 0.5])
+    col1, col2, col3, col_sep, col4, col5 = st.columns([2, 0.5, 0.5, 0.2, 0.5, 0.5])
     with col1:
         st.markdown("**C/S Bicusp/E**")
     with col2:
         st.markdown("<div style='text-align: center;'></div>", unsafe_allow_html=True)
     with col3:
         st.markdown("<div style='text-align: center;'></div>", unsafe_allow_html=True)
+    with col_sep:
+        st.markdown("<div style='border-left: 3px solid #666; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
     with col4:
         st.number_input("", step=0.1, key="cos_bicusp_77_R", label_visibility="collapsed")
     with col5:
         st.number_input("", step=0.1, key="cos_bicusp_77_L", label_visibility="collapsed")
     
     # C/S Molars
-    col1, col2, col3, col4, col5 = st.columns([2, 0.5, 0.5, 0.5, 0.5])
+    col1, col2, col3, col_sep, col4, col5 = st.columns([2, 0.5, 0.5, 0.2, 0.5, 0.5])
     with col1:
         st.markdown("**C/S Molars**")
     with col2:
         st.markdown("<div style='text-align: center;'></div>", unsafe_allow_html=True)
     with col3:
         st.markdown("<div style='text-align: center;'></div>", unsafe_allow_html=True)
+    with col_sep:
+        st.markdown("<div style='border-left: 3px solid #666; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
     with col4:
         st.number_input("", step=0.1, key="cos_molar_77_R", label_visibility="collapsed")
     with col5:
         st.number_input("", step=0.1, key="cos_molar_77_L", label_visibility="collapsed")
     
     # Curve of Spee
-    col1, col2, col3, col4, col5 = st.columns([2, 0.5, 0.5, 0.5, 0.5])
+    col1, col2, col3, col_sep, col4, col5 = st.columns([2, 0.5, 0.5, 0.2, 0.5, 0.5])
     with col1:
         st.markdown("**Curve of Spee**")
     with col2:
         st.number_input("", step=0.1, key="cos_33_R", label_visibility="collapsed")
     with col3:
         st.number_input("", step=0.1, key="cos_33_L", label_visibility="collapsed")
+    with col_sep:
+        st.markdown("<div style='border-left: 3px solid #666; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
     with col4:
-        st.markdown(f"<div style='text-align: center;'>{float(st.session_state['cos_bicusp_77_R']):.1f}</div>", unsafe_allow_html=True)
+        # Auto-populated from 3-3
+        st.markdown(f"<div style='text-align: center; padding: 6px; background: #e8f4f8; border-radius: 4px;'>{float(st.session_state['cos_33_R']):.1f}</div>", unsafe_allow_html=True)
     with col5:
-        st.markdown(f"<div style='text-align: center;'>{float(st.session_state['cos_bicusp_77_L']):.1f}</div>", unsafe_allow_html=True)
+        # Auto-populated from 3-3
+        st.markdown(f"<div style='text-align: center; padding: 6px; background: #e8f4f8; border-radius: 4px;'>{float(st.session_state['cos_33_L']):.1f}</div>", unsafe_allow_html=True)
     
     st.markdown("</div>", unsafe_allow_html=True)
     
     # MIDLINE (Orange)
     st.markdown("<div style='background: rgba(255, 165, 0, .12); padding: 8px; border-radius: 8px; margin: 10px 0;'>", unsafe_allow_html=True)
-    col1, col2, col3, col4, col5 = st.columns([2, 0.5, 0.5, 0.5, 0.5])
+    col1, col2, col3, col_sep, col4, col5 = st.columns([2, 0.5, 0.5, 0.2, 0.5, 0.5])
     with col1:
         st.markdown("**Midline**")
     with col2:
         st.markdown(f"<div style='text-align: center;'>{lower_dental_midline:+.1f}</div>", unsafe_allow_html=True)
     with col3:
+        st.markdown(f"<div style='text-align: center;'>{-lower_dental_midline:+.1f}</div>", unsafe_allow_html=True)
+    with col_sep:
+        st.markdown("<div style='border-left: 3px solid #666; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
         st.markdown(f"<div style='text-align: center;'>{-lower_dental_midline:+.1f}</div>", unsafe_allow_html=True)
     with col4:
         st.markdown("<div style='text-align: center;'>0.0</div>", unsafe_allow_html=True)
@@ -998,12 +1027,15 @@ with tabs[2]:
         st.markdown("<div style='text-align: center;'>0.0</div>", unsafe_allow_html=True)
     
     # Incisor Position
-    col1, col2, col3, col4, col5 = st.columns([2, 0.5, 0.5, 0.5, 0.5])
+    col1, col2, col3, col_sep, col4, col5 = st.columns([2, 0.5, 0.5, 0.2, 0.5, 0.5])
     with col1:
         st.markdown("**Incisor Position**")
     with col2:
         st.number_input("", step=0.1, key="inc_pos_33_R", label_visibility="collapsed")
     with col3:
+        st.number_input("", step=0.1, key="inc_pos_33_L", label_visibility="collapsed")
+    with col_sep:
+        st.markdown("<div style='border-left: 3px solid #666; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
         st.number_input("", step=0.1, key="inc_pos_33_L", label_visibility="collapsed")
     with col4:
         st.markdown("<div style='text-align: center;'>0.0</div>", unsafe_allow_html=True)
@@ -1020,21 +1052,28 @@ with tabs[2]:
                     float(st.session_state["cos_33_L"]) + 
                     (-lower_dental_midline) + 
                     float(st.session_state["inc_pos_33_L"]))
+    
+    # 7-7 includes: Post C/S + C/S Bicusp + C/S Molars + Curve of Spee (same as 3-3)
     initial_77_R = (float(st.session_state["post_cs_77_R"]) + 
                     float(st.session_state["cos_bicusp_77_R"]) + 
-                    float(st.session_state["cos_molar_77_R"]))
+                    float(st.session_state["cos_molar_77_R"]) +
+                    float(st.session_state["cos_33_R"]))  # Add COS from 3-3
     initial_77_L = (float(st.session_state["post_cs_77_L"]) + 
                     float(st.session_state["cos_bicusp_77_L"]) + 
-                    float(st.session_state["cos_molar_77_L"]))
+                    float(st.session_state["cos_molar_77_L"]) +
+                    float(st.session_state["cos_33_L"]))  # Add COS from 3-3
     
     # INITIAL DISCREPANCY (Yellow)
     st.markdown("<div style='background: rgba(255, 255, 0, .15); padding: 8px; border-radius: 8px; margin: 10px 0;'>", unsafe_allow_html=True)
-    col1, col2, col3, col4, col5 = st.columns([2, 0.5, 0.5, 0.5, 0.5])
+    col1, col2, col3, col_sep, col4, col5 = st.columns([2, 0.5, 0.5, 0.2, 0.5, 0.5])
     with col1:
         st.markdown("**Initial Discrepancy**")
     with col2:
         st.markdown(f"<div style='text-align: center; font-weight: bold;'>{initial_33_R:.1f}</div>", unsafe_allow_html=True)
     with col3:
+        st.markdown(f"<div style='text-align: center; font-weight: bold;'>{initial_33_L:.1f}</div>", unsafe_allow_html=True)
+    with col_sep:
+        st.markdown("<div style='border-left: 3px solid #666; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
         st.markdown(f"<div style='text-align: center; font-weight: bold;'>{initial_33_L:.1f}</div>", unsafe_allow_html=True)
     with col4:
         st.markdown(f"<div style='text-align: center; font-weight: bold;'>{initial_77_R:.1f}</div>", unsafe_allow_html=True)
@@ -1046,12 +1085,15 @@ with tabs[2]:
     st.markdown("<div style='background: rgba(30, 180, 90, .08); padding: 8px; border-radius: 8px; margin: 10px 0;'>", unsafe_allow_html=True)
     
     # Stripping
-    col1, col2, col3, col4, col5 = st.columns([2, 0.5, 0.5, 0.5, 0.5])
+    col1, col2, col3, col_sep, col4, col5 = st.columns([2, 0.5, 0.5, 0.2, 0.5, 0.5])
     with col1:
         st.markdown("**Stripping**")
     with col2:
         st.number_input("", step=0.1, key="strip_33_R", label_visibility="collapsed")
     with col3:
+        st.number_input("", step=0.1, key="strip_33_L", label_visibility="collapsed")
+    with col_sep:
+        st.markdown("<div style='border-left: 3px solid #666; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
         st.number_input("", step=0.1, key="strip_33_L", label_visibility="collapsed")
     with col4:
         st.number_input("", step=0.1, key="strip_77_R", label_visibility="collapsed")
@@ -1059,12 +1101,15 @@ with tabs[2]:
         st.number_input("", step=0.1, key="strip_77_L", label_visibility="collapsed")
     
     # Expansion
-    col1, col2, col3, col4, col5 = st.columns([2, 0.5, 0.5, 0.5, 0.5])
+    col1, col2, col3, col_sep, col4, col5 = st.columns([2, 0.5, 0.5, 0.2, 0.5, 0.5])
     with col1:
         st.markdown("**Expansion**")
     with col2:
         st.number_input("", step=0.1, key="exp_33_R", label_visibility="collapsed")
     with col3:
+        st.number_input("", step=0.1, key="exp_33_L", label_visibility="collapsed")
+    with col_sep:
+        st.markdown("<div style='border-left: 3px solid #666; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
         st.number_input("", step=0.1, key="exp_33_L", label_visibility="collapsed")
     with col4:
         st.number_input("", step=0.1, key="exp_77_R", label_visibility="collapsed")
@@ -1072,12 +1117,15 @@ with tabs[2]:
         st.number_input("", step=0.1, key="exp_77_L", label_visibility="collapsed")
     
     # Distalizing 6-6
-    col1, col2, col3, col4, col5 = st.columns([2, 0.5, 0.5, 0.5, 0.5])
+    col1, col2, col3, col_sep, col4, col5 = st.columns([2, 0.5, 0.5, 0.2, 0.5, 0.5])
     with col1:
         st.markdown("**Distalizing 6-6**")
     with col2:
         st.number_input("", step=0.1, key="dist_33_R", label_visibility="collapsed")
     with col3:
+        st.number_input("", step=0.1, key="dist_33_L", label_visibility="collapsed")
+    with col_sep:
+        st.markdown("<div style='border-left: 3px solid #666; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
         st.number_input("", step=0.1, key="dist_33_L", label_visibility="collapsed")
     with col4:
         st.number_input("", step=0.1, key="dist_77_R", label_visibility="collapsed")
@@ -1085,12 +1133,15 @@ with tabs[2]:
         st.number_input("", step=0.1, key="dist_77_L", label_visibility="collapsed")
     
     # Extraction
-    col1, col2, col3, col4, col5 = st.columns([2, 0.5, 0.5, 0.5, 0.5])
+    col1, col2, col3, col_sep, col4, col5 = st.columns([2, 0.5, 0.5, 0.2, 0.5, 0.5])
     with col1:
         st.markdown("**Extraction**")
     with col2:
         st.number_input("", step=0.1, key="ext_33_R", label_visibility="collapsed")
     with col3:
+        st.number_input("", step=0.1, key="ext_33_L", label_visibility="collapsed")
+    with col_sep:
+        st.markdown("<div style='border-left: 3px solid #666; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
         st.number_input("", step=0.1, key="ext_33_L", label_visibility="collapsed")
     with col4:
         st.number_input("", step=0.1, key="ext_77_R", label_visibility="collapsed")
@@ -1132,12 +1183,15 @@ with tabs[2]:
     
     # REMAINING DISCREPANCY (Yellow)
     st.markdown("<div style='background: rgba(255, 255, 0, .15); padding: 8px; border-radius: 8px; margin: 10px 0;'>", unsafe_allow_html=True)
-    col1, col2, col3, col4, col5 = st.columns([2, 0.5, 0.5, 0.5, 0.5])
+    col1, col2, col3, col_sep, col4, col5 = st.columns([2, 0.5, 0.5, 0.2, 0.5, 0.5])
     with col1:
         st.markdown("**Remaining Discrepancy**")
     with col2:
         st.markdown(f"<div style='text-align: center; font-weight: bold; font-size: 18px;'>{remaining_33_R:.1f}</div>", unsafe_allow_html=True)
     with col3:
+        st.markdown(f"<div style='text-align: center; font-weight: bold; font-size: 18px;'>{remaining_33_L:.1f}</div>", unsafe_allow_html=True)
+    with col_sep:
+        st.markdown("<div style='border-left: 3px solid #666; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
         st.markdown(f"<div style='text-align: center; font-weight: bold; font-size: 18px;'>{remaining_33_L:.1f}</div>", unsafe_allow_html=True)
     with col4:
         st.markdown(f"<div style='text-align: center; font-weight: bold; font-size: 18px;'>{remaining_77_R:.1f}</div>", unsafe_allow_html=True)
