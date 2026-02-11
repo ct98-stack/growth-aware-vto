@@ -412,13 +412,17 @@ def proposed_movement_svg_two_arch(
 
     def arrow(x: int, y: int, v: float) -> str:
         v = clean(v)
+        # Don't show arrow if movement is essentially zero
+        if abs(v) < 0.05:
+            return ""
+        
         L = max(22, min(70, abs(v) * 18))
         if v > 0:
             x1, x2 = x - 10, x - 10 + L
         elif v < 0:
             x1, x2 = x + 10, x + 10 - L
         else:
-            x1, x2 = x - 22, x + 22
+            return ""  # No arrow for exactly zero
 
         return f"""
         <line x1="{x1}" y1="{y}" x2="{x2}" y2="{y}"
