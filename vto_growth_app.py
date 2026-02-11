@@ -517,36 +517,32 @@ def movement_sign(rem: float, side: str, tooth_type: str) -> float:
     - Negative values → arrows point LEFT (toward patient's right)
     
     Extraction mechanics (rem > 0, excess space):
-    - MOLARS (6): Anchor or move MESIALLY (toward midline) to help close space
-    - CANINES (3) & INCISORS: Move DISTALLY (toward molars) to close space
+    - MOLARS (6): Move MESIALLY/ANTERIORLY (forward) into extraction space
+      - Both R6 and L6 move in POSITIVE direction (anteriorly/mesially on their arch)
+    - CANINES (3) & INCISORS: Retract/move in NEGATIVE direction
     
     Crowding mechanics (rem < 0, need space):
-    - ALL teeth: Expand outward from midline
+    - ALL teeth: Sign MATCHES the remaining discrepancy sign
+      - Negative remaining → negative movement (left)
+      - This represents the direction of the crowding/shift
     """
     if rem == 0:
         return 0.0
     
-    # CROWDING: All teeth expand away from midline
+    # CROWDING: Movement sign MATCHES remaining discrepancy sign
     if rem < 0:
-        if side == "R":
-            return -1.0  # Right side: expand left (away from midline)
-        else:
-            return 1.0   # Left side: expand right (away from midline)
+        # Negative remaining = crowding shifted in negative direction
+        return -1.0  # All teeth move in negative direction (left)
     
-    # EXTRACTION/SPACING: Different patterns by tooth type
+    # EXTRACTION/SPACING: Molars drift mesially, anteriors retract
     else:  # rem > 0
         if tooth_type == "6":  # MOLARS
-            # Molars move MESIALLY (toward midline) to help close space
-            if side == "R":
-                return 1.0   # Right molar moves right (mesially, toward midline)
-            else:
-                return -1.0  # Left molar moves left (mesially, toward midline)
+            # Both molars drift MESIALLY/ANTERIORLY (forward on their arch)
+            # This is POSITIVE direction for both sides
+            return 1.0  # Both R6 and L6 move positive (anteriorly)
         else:  # CANINES and INCISORS
-            # Anterior teeth move DISTALLY (toward molars)
-            if side == "R":
-                return -1.0  # Right canine/incisor moves left (distally, toward molar)
-            else:
-                return 1.0   # Left canine/incisor moves right (distally, toward molar)
+            # Anterior teeth retract
+            return -1.0  # All anterior teeth move negative (posteriorly)
 
 
 # -----------------------------
@@ -633,12 +629,12 @@ with tabs[0]:
 
         m1, m2 = st.columns(2)
         with m1:
-          st.number_input(
-            "Lower dental midline (mm)", 
-            step=0.1, 
-            key="lower_dental_midline_mm",
-            help="Positive = midline shifted to patient's RIGHT. Negative = shifted to patient's LEFT."
-          )
+            st.number_input(
+                "Lower dental midline (mm)", 
+                step=0.1, 
+                key="lower_dental_midline_mm",
+                help="Positive = midline shifted to patient's RIGHT. Negative = shifted to patient's LEFT."
+            )
         with m2:
             st.number_input("Lower skeletal midline (mm)", step=0.1, key="lower_skeletal_midline_mm")
 
@@ -1240,56 +1236,36 @@ with tabs[3]:
     # ======================================
     
     # Get remaining from session state (calculated in Step 2)
-    # 3-3 values used for anterior teeth (canines, incisors)
-    # 7-7 values used for posterior teeth (molars)
-    L_remaining_33_R = float(st.session_state.get("remaining_L_R", 0.0))  # Anterior
-    L_remaining_33_L = float(st.session_state.get("remaining_L_L", 0.0))  # Anterior
+    # DOLPHIN LOGIC: Movement = Remaining Discrepancy (no complex allocation)
+    # - Anterior teeth (3, inc) use 3-3 remaining
+    # - Posterior teeth (6) use 7-7 remaining
     
-    # Get 7-7 remaining for molars (stored separately)
-    L_remaining_77_R = float(st.session_state.get("remaining_77_R", 0.0))  # Posterior
-    L_remaining_77_L = float(st.session_state.get("remaining_77_L", 0.0))  # Posterior
+    L_remaining_33_R = float(st.session_state.get("remaining_L_R", 0.0))  # 3-3 R
+    L_remaining_33_L = float(st.session_state.get("remaining_L_L", 0.0))  # 3-3 L
+    L_remaining_77_R = float(st.session_state.get("remaining_77_R", 0.0))  # 7-7 R
+    L_remaining_77_L = float(st.session_state.get("remaining_77_L", 0.0))  # 7-7 L
 
-    # Get midline values for DIRECT correction
+    # Get midline for incisor correction
     lower_dental_midline = float(st.session_state.get("lower_dental_midline_mm", 0.0))
     
-    # Allocate movements - SEPARATE for anterior (3-3) and posterior (7-7)
-    L_alloc_33_R = expected_movement_allocation(L_remaining_33_R, treat_to)  # Anterior allocation
-    L_alloc_33_L = expected_movement_allocation(L_remaining_33_L, treat_to)
-    L_alloc_77_R = expected_movement_allocation(L_remaining_77_R, treat_to)  # Posterior allocation
-    L_alloc_77_L = expected_movement_allocation(L_remaining_77_L, treat_to)
+    # SIMPLE DOLPHIN LOGIC: Each tooth segment moves by its remaining discrepancy
+    # Upper matches lower to maintain Class I
     
-    # UPPER ARCH MOVES WITH LOWER ARCH TO MAINTAIN CLASS I
-    # Apply directional signs - use 7-7 for molars, 3-3 for anterior
-    
-    # Upper right side
-    u_r6 = L_alloc_77_R["6"] * movement_sign(L_remaining_77_R, "R", "6")  # Molar uses 7-7
-    u_r3 = L_alloc_33_R["3"] * movement_sign(L_remaining_33_R, "R", "3")  # Canine uses 3-3
-    
-    # Upper left side
-    u_l6 = L_alloc_77_L["6"] * movement_sign(L_remaining_77_L, "L", "6")  # Molar uses 7-7
-    u_l3 = L_alloc_33_L["3"] * movement_sign(L_remaining_33_L, "L", "3")  # Canine uses 3-3
-    
-    # Upper incisors - use 3-3 (average of both sides)
-    u_inc = (L_alloc_33_R["inc"] * movement_sign(L_remaining_33_R, "R", "inc") + 
-             L_alloc_33_L["inc"] * movement_sign(L_remaining_33_L, "L", "inc")) / 2.0
+    # Upper arch (matches lower)
+    u_r6 = L_remaining_77_R  # Molar uses 7-7
+    u_r3 = L_remaining_33_R  # Canine uses 3-3
+    u_l6 = L_remaining_77_L  # Molar uses 7-7
+    u_l3 = L_remaining_33_L  # Canine uses 3-3
+    u_inc = (L_remaining_33_R + L_remaining_33_L) / 2.0  # Average both sides
 
-    # Lower right side
-    l_r6 = L_alloc_77_R["6"] * movement_sign(L_remaining_77_R, "R", "6")  # Molar uses 7-7
-    l_r3 = L_alloc_33_R["3"] * movement_sign(L_remaining_33_R, "R", "3")  # Canine uses 3-3
-    
-    # Lower left side
-    l_l6 = L_alloc_77_L["6"] * movement_sign(L_remaining_77_L, "L", "6")  # Molar uses 7-7
-    l_l3 = L_alloc_33_L["3"] * movement_sign(L_remaining_33_L, "L", "3")  # Canine uses 3-3
+    # Lower arch
+    l_r6 = L_remaining_77_R  # Molar uses 7-7
+    l_r3 = L_remaining_33_R  # Canine uses 3-3
+    l_l6 = L_remaining_77_L  # Molar uses 7-7
+    l_l3 = L_remaining_33_L  # Canine uses 3-3
     
     # Lower incisors - DIRECT MIDLINE CORRECTION
-    # The lower incisor movement must equal the dental midline to achieve facial coincidence
-    # We REPLACE the allocated movement with the direct midline correction
-    l_inc_from_allocation = (L_alloc_33_R["inc"] * movement_sign(L_remaining_33_R, "R", "inc") + 
-                              L_alloc_33_L["inc"] * movement_sign(L_remaining_33_L, "L", "inc")) / 2.0
-    
-    # DIRECT midline correction: move incisors by the full midline amount
-    # Sign: if dental midline is +1.5 (shifted to patient's left), 
-    # incisors must move -1.5 (toward patient's right) to center
+    # Override with midline correction
     l_inc = -lower_dental_midline
     
     # Note: We could add the allocation on top of midline correction, but clinically
