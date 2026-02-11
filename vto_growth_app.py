@@ -1159,6 +1159,7 @@ with tabs[2]:
 # =========================================================
 # STEP 3
 # =========================================================
+
 with tabs[3]:
     st.markdown('<div class="panel"><div class="panel-title">Step 3 — Proposed Dental Movement</div>', unsafe_allow_html=True)
     st.markdown(
@@ -1181,37 +1182,21 @@ with tabs[3]:
     st.markdown("<hr/>", unsafe_allow_html=True)
 
     # ======================================
-    # CALCULATE MOVEMENTS FROM REMAINING
+    # CALCULATE MOVEMENTS FROM REMAINING (LOWER ONLY)
     # ======================================
     
     # Get remaining from session state (calculated in Step 2)
-    U_remaining_R = float(st.session_state.get("remaining_U_R", 0.0))
-    U_remaining_L = float(st.session_state.get("remaining_U_L", 0.0))
     L_remaining_R = float(st.session_state.get("remaining_L_R", 0.0))
     L_remaining_L = float(st.session_state.get("remaining_L_L", 0.0))
 
     # Get midline values for DIRECT correction
     lower_dental_midline = float(st.session_state.get("lower_dental_midline_mm", 0.0))
     
-    # Allocate movements for each quadrant
-    U_alloc_R = expected_movement_allocation(U_remaining_R, treat_to)
-    U_alloc_L = expected_movement_allocation(U_remaining_L, treat_to)
+    # Allocate movements for each quadrant (LOWER ONLY)
     L_alloc_R = expected_movement_allocation(L_remaining_R, treat_to)
     L_alloc_L = expected_movement_allocation(L_remaining_L, treat_to)
 
     # Apply directional signs with tooth-type specific logic
-    # Upper right side
-    u_r6 = U_alloc_R["6"] * movement_sign(U_remaining_R, "R", "6")
-    u_r3 = U_alloc_R["3"] * movement_sign(U_remaining_R, "R", "3")
-    
-    # Upper left side
-    u_l6 = U_alloc_L["6"] * movement_sign(U_remaining_L, "L", "6")
-    u_l3 = U_alloc_L["3"] * movement_sign(U_remaining_L, "L", "3")
-    
-    # Upper incisors (average of both sides)
-    u_inc = (U_alloc_R["inc"] * movement_sign(U_remaining_R, "R", "inc") + 
-             U_alloc_L["inc"] * movement_sign(U_remaining_L, "L", "inc")) / 2.0
-
     # Lower right side
     l_r6 = L_alloc_R["6"] * movement_sign(L_remaining_R, "R", "6")
     l_r3 = L_alloc_R["3"] * movement_sign(L_remaining_R, "R", "3")
@@ -1220,53 +1205,55 @@ with tabs[3]:
     l_l6 = L_alloc_L["6"] * movement_sign(L_remaining_L, "L", "6")
     l_l3 = L_alloc_L["3"] * movement_sign(L_remaining_L, "L", "3")
     
-    # Lower incisors - DIRECT MIDLINE CORRECTION
-    # The lower incisor movement must equal the dental midline to achieve facial coincidence
-    # We REPLACE the allocated movement with the direct midline correction
-    l_inc_from_allocation = (L_alloc_R["inc"] * movement_sign(L_remaining_R, "R", "inc") + 
-                              L_alloc_L["inc"] * movement_sign(L_remaining_L, "L", "inc")) / 2.0
+    # Lower incisors - COMBINE space allocation WITH midline correction
+    l_inc_from_space = (L_alloc_R["inc"] * movement_sign(L_remaining_R, "R", "inc") + 
+                        L_alloc_L["inc"] * movement_sign(L_remaining_L, "L", "inc")) / 2.0
     
-    # DIRECT midline correction: move incisors by the full midline amount
-    # Sign: if dental midline is +1.5 (shifted to patient's left), 
-    # incisors must move -1.5 (toward patient's right) to center
-    l_inc = -lower_dental_midline
+    # Midline correction component
+    midline_correction = -lower_dental_midline
     
-    # Note: We could add the allocation on top of midline correction, but clinically
-    # the primary goal is midline correction, so we use it directly
+    # COMBINED movement (you can adjust the weighting)
+    l_inc = l_inc_from_space + midline_correction
+
+    # Upper arch - set to zero since not calculated
+    u_r6, u_r3, u_inc, u_l3, u_l6 = 0.0, 0.0, 0.0, 0.0, 0.0
 
     # ======================================
     # SHOW SUMMARY TABLE
     # ======================================
     st.markdown("### Movement Summary (mm)")
     
-    col1, col2 = st.columns(2)
+    st.markdown("**Lower Arch Only** (Upper arch not calculated in this version)")
     
-    with col1:
-        st.markdown("**Upper Arch**")
-        upper_movements = pd.DataFrame([
-            ["R6", f"{u_r6:+.1f}"],
-            ["R3", f"{u_r3:+.1f}"],
-            ["Inc", f"{u_inc:+.1f}"],
-            ["L3", f"{u_l3:+.1f}"],
-            ["L6", f"{u_l6:+.1f}"],
-        ], columns=["Tooth", "Movement"])
-        st.dataframe(upper_movements, use_container_width=True, hide_index=True)
-    
-    with col2:
-        st.markdown("**Lower Arch**")
-        lower_movements = pd.DataFrame([
-            ["R6", f"{l_r6:+.1f}"],
-            ["R3", f"{l_r3:+.1f}"],
-            ["Inc", f"{l_inc:+.1f}"],
-            ["L3", f"{l_l3:+.1f}"],
-            ["L6", f"{l_l6:+.1f}"],
-        ], columns=["Tooth", "Movement"])
-        st.dataframe(lower_movements, use_container_width=True, hide_index=True)
+    lower_movements = pd.DataFrame([
+        ["R6", f"{l_r6:+.1f}"],
+        ["R3", f"{l_r3:+.1f}"],
+        ["Inc", f"{l_inc:+.1f}"],
+        ["L3", f"{l_l3:+.1f}"],
+        ["L6", f"{l_l6:+.1f}"],
+    ], columns=["Tooth", "Movement"])
+    st.dataframe(lower_movements, use_container_width=True, hide_index=True)
+
+    # Show breakdown
+    with st.expander("📊 Movement Breakdown"):
+        st.markdown(f"**Right Quadrant (3-3 R)**")
+        st.write(f"- Remaining discrepancy: {L_remaining_R:+.1f} mm")
+        st.write(f"- Status: {remaining_status(L_remaining_R)}")
+        
+        st.markdown(f"**Left Quadrant (3-3 L)**")
+        st.write(f"- Remaining discrepancy: {L_remaining_L:+.1f} mm")
+        st.write(f"- Status: {remaining_status(L_remaining_L)}")
+        
+        st.markdown(f"**Midline Correction**")
+        st.write(f"- Lower dental midline: {lower_dental_midline:+.1f} mm")
+        st.write(f"- Correction needed: {midline_correction:+.1f} mm")
+        st.write(f"- Space allocation: {l_inc_from_space:+.1f} mm")
+        st.write(f"- **Total incisor movement: {l_inc:+.1f} mm**")
 
     st.markdown(
         "<div class='hint'>"
         "Positive = toward patient's left; Negative = toward patient's right<br>"
-        "<b>Lower incisor movement applies DIRECT midline correction</b> to achieve facial coincidence"
+        "<b>Lower incisor movement combines space needs with midline correction</b>"
         "</div>",
         unsafe_allow_html=True
     )
@@ -1279,8 +1266,8 @@ with tabs[3]:
     st.markdown("### Visual Treatment Objective")
     
     svg = proposed_movement_svg_two_arch(
-        u_r6, u_r3, u_inc, u_l3, u_l6,
-        l_r6, l_r3, l_inc, l_l3, l_l6,
+        u_r6, u_r3, u_inc, u_l3, u_l6,  # Upper = zeros
+        l_r6, l_r3, l_inc, l_l3, l_l6,   # Lower = calculated
     )
     components.html(svg, height=760, scrolling=False)
 
