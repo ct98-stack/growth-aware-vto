@@ -822,15 +822,8 @@ with tabs[1]:
 # STEP 2
 # =========================================================
 with tabs[2]:
-    st.markdown('<div class="panel"><div class="panel-title">Step 2 — Discrepancy Calculations (Upper + Lower)</div>', unsafe_allow_html=True)
-    st.markdown(
-        "<div class='band-gray'>"
-        "<b>Separate calculations:</b> Upper and Lower arches are computed independently (Right + Left). "
-        "<br><span class='hint'>Lower Midline component is auto-derived from Step 1 lower dental midline.</span>"
-        "</div>",
-        unsafe_allow_html=True
-    )
-
+    st.markdown('<div class="panel"><div class="panel-title">Step 2 — Lower Arch Discrepancy Analysis</div>', unsafe_allow_html=True)
+    
     # Calculate growth space
     cvms_stage = st.session_state["cvms_stage"]
     treatment_duration = st.session_state["treatment_duration"]
@@ -843,179 +836,320 @@ with tabs[2]:
         custom_transverse=float(st.session_state.get("custom_transverse", 0.0))
     )
     
-    growth_label = f"Growth ({cvms_stage}, {treatment_duration:.0f}mo) [ON]" if include_growth else "Growth [OFF]"
-    growth_U_total = growth_calc["upper_total"]
     growth_L_total = growth_calc["lower_total"]
-
-    growth_U_R = growth_U_total / 2.0
-    growth_U_L = growth_U_total / 2.0
-    growth_L_R = growth_L_total / 2.0
-    growth_L_L = growth_L_total / 2.0
+    growth_L_33 = growth_L_total / 2.0  # Split between 3-3 sections
+    growth_L_77 = 0.0  # No growth contribution to 7-7 posterior
     
     if include_growth:
         st.markdown(
             f"<div class='band-purple'>"
-            f"<b>Growth Space Equivalent:</b> Upper = {growth_U_total:.2f} mm total ({growth_U_R:.2f} mm per side), "
-            f"Lower = {growth_L_total:.2f} mm total ({growth_L_R:.2f} mm per side)"
+            f"<b>Growth Space:</b> {growth_L_total:.2f} mm total (applied to anterior 3-3)"
             f"</div>",
             unsafe_allow_html=True
         )
-
-    st.markdown("<hr/>", unsafe_allow_html=True)
-
-    # ---------- LOWER ARCH ----------
-    st.markdown("## Lower Arch Discrepancy")
-
-    # Lower midline component tracks lower dental midline FROM STEP 1
+    
+    # Lower midline FROM STEP 1
     lower_dental_midline = float(st.session_state["lower_dental_midline_mm"])
-    midline_L_R = +lower_dental_midline
-    midline_L_L = -lower_dental_midline
     
     st.markdown(
         f"<div class='band-gray'>"
-        f"<b>Midline values auto-populated from Step 1:</b> "
-        f"Lower dental = {lower_dental_midline:+.2f} mm, "
-        f"Lower skeletal = {float(st.session_state['lower_skeletal_midline_mm']):+.2f} mm "
-        f"<i>(Edit these in Step 1 if needed)</i>"
+        f"<b>Midline from Step 1:</b> Lower dental = {lower_dental_midline:+.2f} mm"
         f"</div>",
         unsafe_allow_html=True
     )
-
-    st.markdown('<div class="band-blue">Initial Discrepancy Inputs (Lower 3–3)</div>', unsafe_allow_html=True)
-    lA, lB = st.columns(2)
-    with lA:
-        st.markdown("**Lower Right (3–3)**")
-        L_ant_R = st.number_input("Ant. Crowding/Spacing (R)", value=0.0, step=0.1, key="L_ant_R")
-        L_cos_R = st.number_input("Curve of Spee (R)", value=0.0, step=0.1, key="L_cos_R")
-        st.number_input("Midline (R) — auto", value=midline_L_R, step=0.1, disabled=True, key="L_mid_R_auto")
-        L_inc_R = st.number_input("Incisor position (R)", value=0.0, step=0.1, key="L_inc_R")
-
-    with lB:
-        st.markdown("**Lower Left (3–3)**")
-        L_ant_L = st.number_input("Ant. Crowding/Spacing (L)", value=0.0, step=0.1, key="L_ant_L")
-        L_cos_L = st.number_input("Curve of Spee (L)", value=0.0, step=0.1, key="L_cos_L")
-        st.number_input("Midline (L) — auto", value=midline_L_L, step=0.1, disabled=True, key="L_mid_L_auto")
-        L_inc_L = st.number_input("Incisor position (L)", value=0.0, step=0.1, key="L_inc_L")
-
-    st.markdown('<div class="band-green">Space Gained (Lower)</div>', unsafe_allow_html=True)
-    lC, lD = st.columns(2)
-    with lC:
-        st.markdown("**Lower Right**")
-        L_strip_R = st.number_input("Stripping/IPR (R)", value=0.0, step=0.1, key="L_strip_R")
-        L_exp_R = st.number_input("Expansion (treatment) (R)", value=0.0, step=0.1, key="L_exp_R")
-        L_dist_R = st.number_input("Distalizing 6–6 (R)", value=0.0, step=0.1, key="L_dist_R")
-        L_ext_R = st.number_input("Extraction space (R)", value=0.0, step=0.1, key="L_ext_R")
-
-    with lD:
-        st.markdown("**Lower Left**")
-        L_strip_L = st.number_input("Stripping/IPR (L)", value=0.0, step=0.1, key="L_strip_L")
-        L_exp_L = st.number_input("Expansion (treatment) (L)", value=0.0, step=0.1, key="L_exp_L")
-        L_dist_L = st.number_input("Distalizing 6–6 (L)", value=0.0, step=0.1, key="L_dist_L")
-        L_ext_L = st.number_input("Extraction space (L)", value=0.0, step=0.1, key="L_ext_L")
-
-    L_initial_R = compute_initial_discrepancy(L_ant_R, L_cos_R, midline_L_R, L_inc_R)
-    L_initial_L = compute_initial_discrepancy(L_ant_L, L_cos_L, midline_L_L, L_inc_L)
-
-    L_gained_R, L_remaining_R = compute_remaining_dolphin(L_initial_R, L_strip_R, L_exp_R, L_dist_R, L_ext_R, growth_L_R)
-    L_gained_L, L_remaining_L = compute_remaining_dolphin(L_initial_L, L_strip_L, L_exp_L, L_dist_L, L_ext_L, growth_L_L)
-
-    st.session_state["remaining_L_R"] = float(L_remaining_R)
-    st.session_state["remaining_L_L"] = float(L_remaining_L)
-
-    lower_table = pd.DataFrame(
-        [
-            ["Ant. Crowding/Spacing", L_ant_R, L_ant_L],
-            ["Curve of Spee", L_cos_R, L_cos_L],
-            ["Midline (tracks Lower dental midline)", midline_L_R, midline_L_L],
-            ["Incisor position", L_inc_R, L_inc_L],
-            ["Initial Discrepancy", L_initial_R, L_initial_L],
-            ["Stripping/IPR", L_strip_R, L_strip_L],
-            ["Expansion (treatment)", L_exp_R, L_exp_L],
-            ["Distalizing 6–6", L_dist_R, L_dist_L],
-            ["Extraction space", L_ext_R, L_ext_L],
-            [growth_label, growth_L_R, growth_L_L],
-            ["Total Gained", L_gained_R, L_gained_L],
-            ["Remaining Discrepancy", L_remaining_R, L_remaining_L],
-        ],
-        columns=["Lower (Component)", "R (mm)", "L (mm)"],
-    )
-    st.dataframe(lower_table, use_container_width=True, hide_index=True)
-
+    
+    st.markdown("---")
+    
+    # Create table-style layout
+    st.markdown("### Lower Arch Discrepancy")
+    
+    # Column headers
+    col_header1, col_header2, col_header3, col_header4 = st.columns([2, 1, 1, 2])
+    with col_header1:
+        st.markdown("<div style='text-align: center; font-weight: bold; margin-bottom: 10px;'></div>", unsafe_allow_html=True)
+    with col_header2:
+        st.markdown("<div style='text-align: center; font-weight: bold; margin-bottom: 10px;'>3 to 3</div>", unsafe_allow_html=True)
+    with col_header3:
+        st.markdown("<div style='text-align: center; font-weight: bold; margin-bottom: 10px;'>7 to 7</div>", unsafe_allow_html=True)
+    
+    # Sub-headers (R and L)
+    col_sh1, col_r_33, col_l_33, col_r_77, col_l_77 = st.columns([2, 0.5, 0.5, 0.5, 0.5])
+    with col_r_33:
+        st.markdown("<div style='text-align: center; font-weight: bold;'>R</div>", unsafe_allow_html=True)
+    with col_l_33:
+        st.markdown("<div style='text-align: center; font-weight: bold;'>L</div>", unsafe_allow_html=True)
+    with col_r_77:
+        st.markdown("<div style='text-align: center; font-weight: bold;'>R</div>", unsafe_allow_html=True)
+    with col_l_77:
+        st.markdown("<div style='text-align: center; font-weight: bold;'>L</div>", unsafe_allow_html=True)
+    
+    # Initialize session state for all inputs
+    ss_init("ant_cs_33_R", 0.0)
+    ss_init("ant_cs_33_L", 0.0)
+    ss_init("post_cs_77_R", 0.0)
+    ss_init("post_cs_77_L", 0.0)
+    ss_init("cos_bicusp_77_R", 0.0)
+    ss_init("cos_bicusp_77_L", 0.0)
+    ss_init("cos_molar_77_R", 0.0)
+    ss_init("cos_molar_77_L", 0.0)
+    ss_init("cos_33_R", 0.0)
+    ss_init("cos_33_L", 0.0)
+    ss_init("inc_pos_33_R", 0.0)
+    ss_init("inc_pos_33_L", 0.0)
+    ss_init("strip_33_R", 0.0)
+    ss_init("strip_33_L", 0.0)
+    ss_init("strip_77_R", 0.0)
+    ss_init("strip_77_L", 0.0)
+    ss_init("exp_33_R", 0.0)
+    ss_init("exp_33_L", 0.0)
+    ss_init("exp_77_R", 0.0)
+    ss_init("exp_77_L", 0.0)
+    ss_init("dist_33_R", 0.0)
+    ss_init("dist_33_L", 0.0)
+    ss_init("dist_77_R", 0.0)
+    ss_init("dist_77_L", 0.0)
+    ss_init("ext_33_R", 0.0)
+    ss_init("ext_33_L", 0.0)
+    ss_init("ext_77_R", 0.0)
+    ss_init("ext_77_L", 0.0)
+    
+    # INITIAL DISCREPANCY SECTION (Blue)
+    st.markdown("<div style='background: rgba(30, 111, 255, .08); padding: 8px; border-radius: 8px; margin: 10px 0;'>", unsafe_allow_html=True)
+    
+    # Ant. Crowding/Spacing
+    col1, col2, col3, col4, col5 = st.columns([2, 0.5, 0.5, 0.5, 0.5])
+    with col1:
+        st.markdown("**Ant. Crowding/Spacing**")
+    with col2:
+        st.number_input("", step=0.1, key="ant_cs_33_R", label_visibility="collapsed")
+    with col3:
+        st.number_input("", step=0.1, key="ant_cs_33_L", label_visibility="collapsed")
+    with col4:
+        st.markdown("<div style='text-align: center;'>—</div>", unsafe_allow_html=True)
+    with col5:
+        st.markdown("<div style='text-align: center;'>—</div>", unsafe_allow_html=True)
+    
+    # Post. Crowding/Spacing
+    col1, col2, col3, col4, col5 = st.columns([2, 0.5, 0.5, 0.5, 0.5])
+    with col1:
+        st.markdown("**Post. Crowding/Spacing**")
+    with col2:
+        st.markdown("<div style='text-align: center;'>—</div>", unsafe_allow_html=True)
+    with col3:
+        st.markdown("<div style='text-align: center;'>—</div>", unsafe_allow_html=True)
+    with col4:
+        st.number_input("", step=0.1, key="post_cs_77_R", label_visibility="collapsed")
+    with col5:
+        st.number_input("", step=0.1, key="post_cs_77_L", label_visibility="collapsed")
+    
+    # C/S Bicusp/E
+    col1, col2, col3, col4, col5 = st.columns([2, 0.5, 0.5, 0.5, 0.5])
+    with col1:
+        st.markdown("**C/S Bicusp/E**")
+    with col2:
+        st.markdown("<div style='text-align: center;'></div>", unsafe_allow_html=True)
+    with col3:
+        st.markdown("<div style='text-align: center;'></div>", unsafe_allow_html=True)
+    with col4:
+        st.number_input("", step=0.1, key="cos_bicusp_77_R", label_visibility="collapsed")
+    with col5:
+        st.number_input("", step=0.1, key="cos_bicusp_77_L", label_visibility="collapsed")
+    
+    # C/S Molars
+    col1, col2, col3, col4, col5 = st.columns([2, 0.5, 0.5, 0.5, 0.5])
+    with col1:
+        st.markdown("**C/S Molars**")
+    with col2:
+        st.markdown("<div style='text-align: center;'></div>", unsafe_allow_html=True)
+    with col3:
+        st.markdown("<div style='text-align: center;'></div>", unsafe_allow_html=True)
+    with col4:
+        st.number_input("", step=0.1, key="cos_molar_77_R", label_visibility="collapsed")
+    with col5:
+        st.number_input("", step=0.1, key="cos_molar_77_L", label_visibility="collapsed")
+    
+    # Curve of Spee
+    col1, col2, col3, col4, col5 = st.columns([2, 0.5, 0.5, 0.5, 0.5])
+    with col1:
+        st.markdown("**Curve of Spee**")
+    with col2:
+        st.number_input("", step=0.1, key="cos_33_R", label_visibility="collapsed")
+    with col3:
+        st.number_input("", step=0.1, key="cos_33_L", label_visibility="collapsed")
+    with col4:
+        st.markdown(f"<div style='text-align: center;'>{float(st.session_state['cos_bicusp_77_R']):.1f}</div>", unsafe_allow_html=True)
+    with col5:
+        st.markdown(f"<div style='text-align: center;'>{float(st.session_state['cos_bicusp_77_L']):.1f}</div>", unsafe_allow_html=True)
+    
+    st.markdown("</div>", unsafe_allow_html=True)
+    
+    # MIDLINE (Orange)
+    st.markdown("<div style='background: rgba(255, 165, 0, .12); padding: 8px; border-radius: 8px; margin: 10px 0;'>", unsafe_allow_html=True)
+    col1, col2, col3, col4, col5 = st.columns([2, 0.5, 0.5, 0.5, 0.5])
+    with col1:
+        st.markdown("**Midline**")
+    with col2:
+        st.markdown(f"<div style='text-align: center;'>{lower_dental_midline:+.1f}</div>", unsafe_allow_html=True)
+    with col3:
+        st.markdown(f"<div style='text-align: center;'>{-lower_dental_midline:+.1f}</div>", unsafe_allow_html=True)
+    with col4:
+        st.markdown("<div style='text-align: center;'>0.0</div>", unsafe_allow_html=True)
+    with col5:
+        st.markdown("<div style='text-align: center;'>0.0</div>", unsafe_allow_html=True)
+    
+    # Incisor Position
+    col1, col2, col3, col4, col5 = st.columns([2, 0.5, 0.5, 0.5, 0.5])
+    with col1:
+        st.markdown("**Incisor Position**")
+    with col2:
+        st.number_input("", step=0.1, key="inc_pos_33_R", label_visibility="collapsed")
+    with col3:
+        st.number_input("", step=0.1, key="inc_pos_33_L", label_visibility="collapsed")
+    with col4:
+        st.markdown("<div style='text-align: center;'>0.0</div>", unsafe_allow_html=True)
+    with col5:
+        st.markdown("<div style='text-align: center;'>0.0</div>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
+    
+    # Calculate Initial Discrepancy
+    initial_33_R = (float(st.session_state["ant_cs_33_R"]) + 
+                    float(st.session_state["cos_33_R"]) + 
+                    lower_dental_midline + 
+                    float(st.session_state["inc_pos_33_R"]))
+    initial_33_L = (float(st.session_state["ant_cs_33_L"]) + 
+                    float(st.session_state["cos_33_L"]) + 
+                    (-lower_dental_midline) + 
+                    float(st.session_state["inc_pos_33_L"]))
+    initial_77_R = (float(st.session_state["post_cs_77_R"]) + 
+                    float(st.session_state["cos_bicusp_77_R"]) + 
+                    float(st.session_state["cos_molar_77_R"]))
+    initial_77_L = (float(st.session_state["post_cs_77_L"]) + 
+                    float(st.session_state["cos_bicusp_77_L"]) + 
+                    float(st.session_state["cos_molar_77_L"]))
+    
+    # INITIAL DISCREPANCY (Yellow)
+    st.markdown("<div style='background: rgba(255, 255, 0, .15); padding: 8px; border-radius: 8px; margin: 10px 0;'>", unsafe_allow_html=True)
+    col1, col2, col3, col4, col5 = st.columns([2, 0.5, 0.5, 0.5, 0.5])
+    with col1:
+        st.markdown("**Initial Discrepancy**")
+    with col2:
+        st.markdown(f"<div style='text-align: center; font-weight: bold;'>{initial_33_R:.1f}</div>", unsafe_allow_html=True)
+    with col3:
+        st.markdown(f"<div style='text-align: center; font-weight: bold;'>{initial_33_L:.1f}</div>", unsafe_allow_html=True)
+    with col4:
+        st.markdown(f"<div style='text-align: center; font-weight: bold;'>{initial_77_R:.1f}</div>", unsafe_allow_html=True)
+    with col5:
+        st.markdown(f"<div style='text-align: center; font-weight: bold;'>{initial_77_L:.1f}</div>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
+    
+    # SPACE GAINED SECTION (Green)
+    st.markdown("<div style='background: rgba(30, 180, 90, .08); padding: 8px; border-radius: 8px; margin: 10px 0;'>", unsafe_allow_html=True)
+    
+    # Stripping
+    col1, col2, col3, col4, col5 = st.columns([2, 0.5, 0.5, 0.5, 0.5])
+    with col1:
+        st.markdown("**Stripping**")
+    with col2:
+        st.number_input("", step=0.1, key="strip_33_R", label_visibility="collapsed")
+    with col3:
+        st.number_input("", step=0.1, key="strip_33_L", label_visibility="collapsed")
+    with col4:
+        st.number_input("", step=0.1, key="strip_77_R", label_visibility="collapsed")
+    with col5:
+        st.number_input("", step=0.1, key="strip_77_L", label_visibility="collapsed")
+    
+    # Expansion
+    col1, col2, col3, col4, col5 = st.columns([2, 0.5, 0.5, 0.5, 0.5])
+    with col1:
+        st.markdown("**Expansion**")
+    with col2:
+        st.number_input("", step=0.1, key="exp_33_R", label_visibility="collapsed")
+    with col3:
+        st.number_input("", step=0.1, key="exp_33_L", label_visibility="collapsed")
+    with col4:
+        st.number_input("", step=0.1, key="exp_77_R", label_visibility="collapsed")
+    with col5:
+        st.number_input("", step=0.1, key="exp_77_L", label_visibility="collapsed")
+    
+    # Distalizing 6-6
+    col1, col2, col3, col4, col5 = st.columns([2, 0.5, 0.5, 0.5, 0.5])
+    with col1:
+        st.markdown("**Distalizing 6-6**")
+    with col2:
+        st.number_input("", step=0.1, key="dist_33_R", label_visibility="collapsed")
+    with col3:
+        st.number_input("", step=0.1, key="dist_33_L", label_visibility="collapsed")
+    with col4:
+        st.number_input("", step=0.1, key="dist_77_R", label_visibility="collapsed")
+    with col5:
+        st.number_input("", step=0.1, key="dist_77_L", label_visibility="collapsed")
+    
+    # Extraction
+    col1, col2, col3, col4, col5 = st.columns([2, 0.5, 0.5, 0.5, 0.5])
+    with col1:
+        st.markdown("**Extraction**")
+    with col2:
+        st.number_input("", step=0.1, key="ext_33_R", label_visibility="collapsed")
+    with col3:
+        st.number_input("", step=0.1, key="ext_33_L", label_visibility="collapsed")
+    with col4:
+        st.number_input("", step=0.1, key="ext_77_R", label_visibility="collapsed")
+    with col5:
+        st.number_input("", step=0.1, key="ext_77_L", label_visibility="collapsed")
+    
+    st.markdown("</div>", unsafe_allow_html=True)
+    
+    # Calculate Total Gained and Remaining
+    gained_33_R = (float(st.session_state["strip_33_R"]) + 
+                   float(st.session_state["exp_33_R"]) + 
+                   float(st.session_state["dist_33_R"]) + 
+                   float(st.session_state["ext_33_R"]) + 
+                   growth_L_33)
+    gained_33_L = (float(st.session_state["strip_33_L"]) + 
+                   float(st.session_state["exp_33_L"]) + 
+                   float(st.session_state["dist_33_L"]) + 
+                   float(st.session_state["ext_33_L"]) + 
+                   growth_L_33)
+    gained_77_R = (float(st.session_state["strip_77_R"]) + 
+                   float(st.session_state["exp_77_R"]) + 
+                   float(st.session_state["dist_77_R"]) + 
+                   float(st.session_state["ext_77_R"]) + 
+                   growth_L_77)
+    gained_77_L = (float(st.session_state["strip_77_L"]) + 
+                   float(st.session_state["exp_77_L"]) + 
+                   float(st.session_state["dist_77_L"]) + 
+                   float(st.session_state["ext_77_L"]) + 
+                   growth_L_77)
+    
+    remaining_33_R = initial_33_R + gained_33_R
+    remaining_33_L = initial_33_L + gained_33_L
+    remaining_77_R = initial_77_R + gained_77_R
+    remaining_77_L = initial_77_L + gained_77_L
+    
+    # Store in session state for Step 3
+    st.session_state["remaining_L_R"] = remaining_33_R
+    st.session_state["remaining_L_L"] = remaining_33_L
+    
+    # REMAINING DISCREPANCY (Yellow)
+    st.markdown("<div style='background: rgba(255, 255, 0, .15); padding: 8px; border-radius: 8px; margin: 10px 0;'>", unsafe_allow_html=True)
+    col1, col2, col3, col4, col5 = st.columns([2, 0.5, 0.5, 0.5, 0.5])
+    with col1:
+        st.markdown("**Remaining Discrepancy**")
+    with col2:
+        st.markdown(f"<div style='text-align: center; font-weight: bold; font-size: 18px;'>{remaining_33_R:.1f}</div>", unsafe_allow_html=True)
+    with col3:
+        st.markdown(f"<div style='text-align: center; font-weight: bold; font-size: 18px;'>{remaining_33_L:.1f}</div>", unsafe_allow_html=True)
+    with col4:
+        st.markdown(f"<div style='text-align: center; font-weight: bold; font-size: 18px;'>{remaining_77_R:.1f}</div>", unsafe_allow_html=True)
+    with col5:
+        st.markdown(f"<div style='text-align: center; font-weight: bold; font-size: 18px;'>{remaining_77_L:.1f}</div>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
+    
     st.markdown(
-        f"<div class='band-gray'><b>Lower status:</b> Right {L_remaining_R:+.2f} ({remaining_status(L_remaining_R)}), "
-        f"Left {L_remaining_L:+.2f} ({remaining_status(L_remaining_L)})</div>",
-        unsafe_allow_html=True
-    )
-
-    st.markdown("<hr/>", unsafe_allow_html=True)
-
-    # ---------- UPPER ARCH ----------
-    st.markdown("## Upper Arch Discrepancy")
-    st.markdown('<div class="band-blue">Initial Discrepancy Inputs (Upper 3–3)</div>', unsafe_allow_html=True)
-
-    uA, uB = st.columns(2)
-    with uA:
-        st.markdown("**Upper Right (3–3)**")
-        U_ant_R = st.number_input("U Ant. Crowding/Spacing (R)", value=0.0, step=0.1, key="U_ant_R")
-        U_cos_R = st.number_input("U Curve of Spee (R)", value=0.0, step=0.1, key="U_cos_R")
-        U_mid_R = st.number_input("U Midline component (R)", value=0.0, step=0.1, key="U_mid_R")
-        U_inc_R = st.number_input("U Incisor position (R)", value=0.0, step=0.1, key="U_inc_R")
-
-    with uB:
-        st.markdown("**Upper Left (3–3)**")
-        U_ant_L = st.number_input("U Ant. Crowding/Spacing (L)", value=0.0, step=0.1, key="U_ant_L")
-        U_cos_L = st.number_input("U Curve of Spee (L)", value=0.0, step=0.1, key="U_cos_L")
-        U_mid_L = st.number_input("U Midline component (L)", value=0.0, step=0.1, key="U_mid_L")
-        U_inc_L = st.number_input("U Incisor position (L)", value=0.0, step=0.1, key="U_inc_L")
-
-    st.markdown('<div class="band-green">Space Gained (Upper)</div>', unsafe_allow_html=True)
-
-    uC, uD = st.columns(2)
-    with uC:
-        st.markdown("**Upper Right**")
-        U_strip_R = st.number_input("U Stripping/IPR (R)", value=0.0, step=0.1, key="U_strip_R")
-        U_exp_R = st.number_input("U Expansion (treatment) (R)", value=0.0, step=0.1, key="U_exp_R")
-        U_dist_R = st.number_input("U Distalizing 6–6 (R)", value=0.0, step=0.1, key="U_dist_R")
-        U_ext_R = st.number_input("U Extraction space (R)", value=0.0, step=0.1, key="U_ext_R")
-
-    with uD:
-        st.markdown("**Upper Left**")
-        U_strip_L = st.number_input("U Stripping/IPR (L)", value=0.0, step=0.1, key="U_strip_L")
-        U_exp_L = st.number_input("U Expansion (treatment) (L)", value=0.0, step=0.1, key="U_exp_L")
-        U_dist_L = st.number_input("U Distalizing 6–6 (L)", value=0.0, step=0.1, key="U_dist_L")
-        U_ext_L = st.number_input("U Extraction space (L)", value=0.0, step=0.1, key="U_ext_L")
-
-    U_initial_R = compute_initial_discrepancy(U_ant_R, U_cos_R, U_mid_R, U_inc_R)
-    U_initial_L = compute_initial_discrepancy(U_ant_L, U_cos_L, U_mid_L, U_inc_L)
-
-    U_gained_R, U_remaining_R = compute_remaining_dolphin(U_initial_R, U_strip_R, U_exp_R, U_dist_R, U_ext_R, growth_U_R)
-    U_gained_L, U_remaining_L = compute_remaining_dolphin(U_initial_L, U_strip_L, U_exp_L, U_dist_L, U_ext_L, growth_U_L)
-
-    st.session_state["remaining_U_R"] = float(U_remaining_R)
-    st.session_state["remaining_U_L"] = float(U_remaining_L)
-
-    upper_table = pd.DataFrame(
-        [
-            ["Ant. Crowding/Spacing", U_ant_R, U_ant_L],
-            ["Curve of Spee", U_cos_R, U_cos_L],
-            ["Midline component", U_mid_R, U_mid_L],
-            ["Incisor position", U_inc_R, U_inc_L],
-            ["Initial Discrepancy", U_initial_R, U_initial_L],
-            ["Stripping/IPR", U_strip_R, U_strip_L],
-            ["Expansion (treatment)", U_exp_R, U_exp_L],
-            ["Distalizing 6–6", U_dist_R, U_dist_L],
-            ["Extraction space", U_ext_R, U_ext_L],
-            [growth_label, growth_U_R, growth_U_L],
-            ["Total Gained", U_gained_R, U_gained_L],
-            ["Remaining Discrepancy", U_remaining_R, U_remaining_L],
-        ],
-        columns=["Upper (Component)", "R (mm)", "L (mm)"],
-    )
-    st.dataframe(upper_table, use_container_width=True, hide_index=True)
-
-    st.markdown(
-        f"<div class='band-gray'><b>Upper status:</b> Right {U_remaining_R:+.2f} ({remaining_status(U_remaining_R)}), "
-        f"Left {U_remaining_L:+.2f} ({remaining_status(U_remaining_L)})</div>",
+        f"<div class='band-gray'>"
+        f"<b>Status:</b> 3-3 Right {remaining_33_R:+.1f} ({remaining_status(remaining_33_R)}), "
+        f"3-3 Left {remaining_33_L:+.1f} ({remaining_status(remaining_33_L)})"
+        f"</div>",
         unsafe_allow_html=True
     )
 
