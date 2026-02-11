@@ -1072,10 +1072,17 @@ with tabs[2]:
         st.number_input("", step=0.1, key="inc_pos_33_L", label_visibility="collapsed")
     with col_sep:
         st.markdown("<div style='border-left: 3px solid #666; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
+    
+    # Read values after inputs are created
+    inc_pos_R = float(st.session_state.get('inc_pos_33_R', 0.0))
+    inc_pos_L = float(st.session_state.get('inc_pos_33_L', 0.0))
+    
     with col4:
-        st.markdown("<div style='text-align: center;'>0.0</div>", unsafe_allow_html=True)
+        # Auto-populated from 3-3
+        st.markdown(f"<div style='text-align: center; padding: 6px; background: #e8f4f8; border-radius: 4px;'>{inc_pos_R:.1f}</div>", unsafe_allow_html=True)
     with col5:
-        st.markdown("<div style='text-align: center;'>0.0</div>", unsafe_allow_html=True)
+        # Auto-populated from 3-3
+        st.markdown(f"<div style='text-align: center; padding: 6px; background: #e8f4f8; border-radius: 4px;'>{inc_pos_L:.1f}</div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
     
     # Calculate Initial Discrepancy
@@ -1088,15 +1095,17 @@ with tabs[2]:
                     (-lower_dental_midline) + 
                     float(st.session_state["inc_pos_33_L"]))
     
-    # 7-7 includes: Post C/S + C/S Bicusp + C/S Molars + Curve of Spee (same as 3-3)
+    # 7-7 includes: Post C/S + C/S Bicusp + C/S Molars + Curve of Spee + Incisor Position (from 3-3)
     initial_77_R = (float(st.session_state["post_cs_77_R"]) + 
                     float(st.session_state["cos_bicusp_77_R"]) + 
                     float(st.session_state["cos_molar_77_R"]) +
-                    float(st.session_state["cos_33_R"]))  # Add COS from 3-3
+                    float(st.session_state["cos_33_R"]) +  # COS from 3-3
+                    float(st.session_state["inc_pos_33_R"]))  # Inc Pos from 3-3
     initial_77_L = (float(st.session_state["post_cs_77_L"]) + 
                     float(st.session_state["cos_bicusp_77_L"]) + 
                     float(st.session_state["cos_molar_77_L"]) +
-                    float(st.session_state["cos_33_L"]))  # Add COS from 3-3
+                    float(st.session_state["cos_33_L"]) +  # COS from 3-3
+                    float(st.session_state["inc_pos_33_L"]))  # Inc Pos from 3-3
     
     # INITIAL DISCREPANCY (Yellow)
     st.markdown("<div style='background: rgba(255, 255, 0, .15); padding: 8px; border-radius: 8px; margin: 10px 0;'>", unsafe_allow_html=True)
