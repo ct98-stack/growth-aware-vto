@@ -936,7 +936,6 @@ with tabs[2]:
         st.number_input("", step=0.1, key="ant_cs_33_R", label_visibility="collapsed")
     with col3:
         st.number_input("", step=0.1, key="ant_cs_33_L", label_visibility="collapsed")
-        st.number_input("", step=0.1, key="ant_cs_33_L", label_visibility="collapsed")
     with col_sep:
         st.markdown("<div style='border-left: 3px solid #666; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
     with col4:
