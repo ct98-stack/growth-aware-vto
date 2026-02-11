@@ -1233,32 +1233,34 @@ with tabs[3]:
     # ======================================
     
     # Get remaining from session state (calculated in Step 2)
-    U_remaining_R = float(st.session_state.get("remaining_U_R", 0.0))
-    U_remaining_L = float(st.session_state.get("remaining_U_L", 0.0))
+    # Note: We only calculate Lower arch in Step 2, but Upper must move WITH Lower to maintain Class I
     L_remaining_R = float(st.session_state.get("remaining_L_R", 0.0))
     L_remaining_L = float(st.session_state.get("remaining_L_L", 0.0))
 
     # Get midline values for DIRECT correction
     lower_dental_midline = float(st.session_state.get("lower_dental_midline_mm", 0.0))
     
-    # Allocate movements for each quadrant
-    U_alloc_R = expected_movement_allocation(U_remaining_R, treat_to)
-    U_alloc_L = expected_movement_allocation(U_remaining_L, treat_to)
+    # Allocate movements for lower arch
     L_alloc_R = expected_movement_allocation(L_remaining_R, treat_to)
     L_alloc_L = expected_movement_allocation(L_remaining_L, treat_to)
+    
+    # UPPER ARCH MOVES WITH LOWER ARCH TO MAINTAIN CLASS I
+    # Upper movements = Lower movements (same magnitude, same direction)
+    U_alloc_R = L_alloc_R  # Same allocation
+    U_alloc_L = L_alloc_L  # Same allocation
 
     # Apply directional signs with tooth-type specific logic
-    # Upper right side
-    u_r6 = U_alloc_R["6"] * movement_sign(U_remaining_R, "R", "6")
-    u_r3 = U_alloc_R["3"] * movement_sign(U_remaining_R, "R", "3")
+    # Upper right side - MATCHES lower right
+    u_r6 = L_alloc_R["6"] * movement_sign(L_remaining_R, "R", "6")
+    u_r3 = L_alloc_R["3"] * movement_sign(L_remaining_R, "R", "3")
     
-    # Upper left side
-    u_l6 = U_alloc_L["6"] * movement_sign(U_remaining_L, "L", "6")
-    u_l3 = U_alloc_L["3"] * movement_sign(U_remaining_L, "L", "3")
+    # Upper left side - MATCHES lower left
+    u_l6 = L_alloc_L["6"] * movement_sign(L_remaining_L, "L", "6")
+    u_l3 = L_alloc_L["3"] * movement_sign(L_remaining_L, "L", "3")
     
-    # Upper incisors (average of both sides)
-    u_inc = (U_alloc_R["inc"] * movement_sign(U_remaining_R, "R", "inc") + 
-             U_alloc_L["inc"] * movement_sign(U_remaining_L, "L", "inc")) / 2.0
+    # Upper incisors - MATCHES lower incisors (average of both sides)
+    u_inc = (L_alloc_R["inc"] * movement_sign(L_remaining_R, "R", "inc") + 
+             L_alloc_L["inc"] * movement_sign(L_remaining_L, "L", "inc")) / 2.0
 
     # Lower right side
     l_r6 = L_alloc_R["6"] * movement_sign(L_remaining_R, "R", "6")
