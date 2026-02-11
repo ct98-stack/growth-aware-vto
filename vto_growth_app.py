@@ -413,9 +413,14 @@ def proposed_movement_svg_two_arch(
     def arrow(x: int, y: int, v: float, tooth_idx: int) -> str:
         """
         tooth_idx: 0=R6, 1=R3, 2=Inc, 3=L3, 4=L6
-        Right side (0,1): positive values point RIGHT
-        Left side (3,4): positive values point LEFT
-        Incisors (2): follow value sign directly
+        
+        Extraction between bicuspids (4-5 area):
+        - R6 moves mesially (RIGHT) toward extraction
+        - R3 moves distally (LEFT) toward extraction  
+        - L3 moves distally (RIGHT) toward extraction
+        - L6 moves mesially (LEFT) toward extraction
+        
+        Arrows point TOWARD the extraction site in each quadrant
         """
         v = clean(v)
         # Don't show arrow if movement is essentially zero
@@ -424,26 +429,32 @@ def proposed_movement_svg_two_arch(
         
         L = max(22, min(70, abs(v) * 18))
         
-        # Determine which side this tooth is on
-        is_right_side = tooth_idx in [0, 1]  # R6, R3
-        is_left_side = tooth_idx in [3, 4]   # L3, L6
-        
         if v > 0:
             # Positive = closing extraction space
-            if is_right_side:
-                # Right side closes RIGHT (toward their extraction)
-                x1, x2 = x - 10, x - 10 + L  # Arrow points RIGHT
-            else:  # Left side or incisors
-                # Left side closes LEFT (toward their extraction)
-                x1, x2 = x + 10, x + 10 - L  # Arrow points LEFT
+            # Each tooth moves TOWARD the extraction site in its quadrant
+            if tooth_idx == 0:  # R6 (molar)
+                x1, x2 = x - 10, x - 10 + L  # Points RIGHT → (toward extraction)
+            elif tooth_idx == 1:  # R3 (canine)
+                x1, x2 = x + 10, x + 10 - L  # Points LEFT ← (toward extraction)
+            elif tooth_idx == 3:  # L3 (canine)
+                x1, x2 = x - 10, x - 10 + L  # Points RIGHT → (toward extraction)
+            elif tooth_idx == 4:  # L6 (molar)
+                x1, x2 = x + 10, x + 10 - L  # Points LEFT ← (toward extraction)
+            else:  # Incisors (idx 2)
+                x1, x2 = x + 10, x + 10 - L  # Points LEFT ←
         else:
             # Negative = crowding expansion
-            if is_right_side:
-                # Right side expands LEFT (away from midline)
-                x1, x2 = x + 10, x + 10 - L  # Arrow points LEFT
-            else:  # Left side or incisors
-                # Left side expands RIGHT (away from midline)
-                x1, x2 = x - 10, x - 10 + L  # Arrow points RIGHT
+            # Teeth move AWAY from each other
+            if tooth_idx == 0:  # R6
+                x1, x2 = x + 10, x + 10 - L  # Points LEFT ←
+            elif tooth_idx == 1:  # R3
+                x1, x2 = x - 10, x - 10 + L  # Points RIGHT →
+            elif tooth_idx == 3:  # L3
+                x1, x2 = x + 10, x + 10 - L  # Points LEFT ←
+            elif tooth_idx == 4:  # L6
+                x1, x2 = x - 10, x - 10 + L  # Points RIGHT →
+            else:  # Incisors
+                x1, x2 = x - 10, x - 10 + L  # Points RIGHT →
 
         return f"""
         <line x1="{x1}" y1="{y}" x2="{x2}" y2="{y}"
