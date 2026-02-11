@@ -417,11 +417,11 @@ def proposed_movement_svg_two_arch(
             return ""
         
         L = max(22, min(70, abs(v) * 18))
-        # FLIPPED: Positive = LEFT, Negative = RIGHT
+        # Positive = RIGHT, Negative = LEFT
         if v > 0:
-            x1, x2 = x + 10, x + 10 - L  # Arrow points LEFT
-        elif v < 0:
             x1, x2 = x - 10, x - 10 + L  # Arrow points RIGHT
+        elif v < 0:
+            x1, x2 = x + 10, x + 10 - L  # Arrow points LEFT
         else:
             return ""  # No arrow for exactly zero
 
