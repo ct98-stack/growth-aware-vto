@@ -417,11 +417,17 @@ def proposed_movement_svg_two_arch(
             return ""
         
         L = max(22, min(70, abs(v) * 18))
-        # Positive = RIGHT, Negative = LEFT
+        
+        # Convention for tooth movement:
+        # Positive = Closing extraction space = Move LEFT (mesially/anteriorly)
+        # Negative = Crowding expansion = Move in direction of crowding
+        
         if v > 0:
-            x1, x2 = x - 10, x - 10 + L  # Arrow points RIGHT
-        elif v < 0:
+            # Extraction: teeth close space by moving LEFT
             x1, x2 = x + 10, x + 10 - L  # Arrow points LEFT
+        elif v < 0:
+            # Crowding: teeth move in direction indicated by negative value
+            x1, x2 = x - 10, x - 10 + L  # Arrow points RIGHT
         else:
             return ""  # No arrow for exactly zero
 
