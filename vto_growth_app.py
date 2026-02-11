@@ -1056,11 +1056,12 @@ with tabs[2]:
         st.markdown(f"<div style='text-align: center;'>{-lower_dental_midline:+.1f}</div>", unsafe_allow_html=True)
     with col_sep:
         st.markdown("<div style='border-left: 3px solid #666; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
-        st.markdown(f"<div style='text-align: center;'>{-lower_dental_midline:+.1f}</div>", unsafe_allow_html=True)
     with col4:
-        st.markdown("<div style='text-align: center;'>0.0</div>", unsafe_allow_html=True)
+        # Mirror from 3-3
+        st.markdown(f"<div style='text-align: center; padding: 6px; background: #fff3e0; border-radius: 4px;'>{lower_dental_midline:+.1f}</div>", unsafe_allow_html=True)
     with col5:
-        st.markdown("<div style='text-align: center;'>0.0</div>", unsafe_allow_html=True)
+        # Mirror from 3-3
+        st.markdown(f"<div style='text-align: center; padding: 6px; background: #fff3e0; border-radius: 4px;'>{-lower_dental_midline:+.1f}</div>", unsafe_allow_html=True)
     
     # Incisor Position
     col1, col2, col3, col_sep, col4, col5 = st.columns([2, 0.5, 0.5, 0.2, 0.5, 0.5])
@@ -1095,16 +1096,18 @@ with tabs[2]:
                     (-lower_dental_midline) + 
                     float(st.session_state["inc_pos_33_L"]))
     
-    # 7-7 includes: Post C/S + C/S Bicusp + C/S Molars + Curve of Spee + Incisor Position (from 3-3)
+    # 7-7 includes: Post C/S + C/S Bicusp + C/S Molars + Curve of Spee + Midline + Incisor Position (from 3-3)
     initial_77_R = (float(st.session_state["post_cs_77_R"]) + 
                     float(st.session_state["cos_bicusp_77_R"]) + 
                     float(st.session_state["cos_molar_77_R"]) +
                     float(st.session_state["cos_33_R"]) +  # COS from 3-3
+                    lower_dental_midline +  # Midline from 3-3
                     float(st.session_state["inc_pos_33_R"]))  # Inc Pos from 3-3
     initial_77_L = (float(st.session_state["post_cs_77_L"]) + 
                     float(st.session_state["cos_bicusp_77_L"]) + 
                     float(st.session_state["cos_molar_77_L"]) +
                     float(st.session_state["cos_33_L"]) +  # COS from 3-3
+                    (-lower_dental_midline) +  # Midline from 3-3
                     float(st.session_state["inc_pos_33_L"]))  # Inc Pos from 3-3
     
     # INITIAL DISCREPANCY (Yellow)
