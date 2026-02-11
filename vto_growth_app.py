@@ -1189,7 +1189,6 @@ with tabs[2]:
         st.markdown(f"<div style='text-align: center; font-weight: bold; font-size: 18px;'>{remaining_33_L:.1f}</div>", unsafe_allow_html=True)
     with col_sep:
         st.markdown("<div style='border-left: 3px solid #666; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
-        st.markdown(f"<div style='text-align: center; font-weight: bold; font-size: 18px;'>{remaining_33_L:.1f}</div>", unsafe_allow_html=True)
     with col4:
         st.markdown(f"<div style='text-align: center; font-weight: bold; font-size: 18px;'>{remaining_77_R:.1f}</div>", unsafe_allow_html=True)
     with col5:
@@ -1251,22 +1250,21 @@ with tabs[3]:
     # SIMPLE DOLPHIN LOGIC: Each tooth segment moves by its remaining discrepancy
     # Upper matches lower to maintain Class I
     
-    # Upper arch (matches lower)
+    # Lower incisors - DIRECT MIDLINE CORRECTION
+    l_inc = -lower_dental_midline
+    
+    # Upper arch (matches lower exactly)
     u_r6 = L_remaining_77_R  # Molar uses 7-7
     u_r3 = L_remaining_33_R  # Canine uses 3-3
     u_l6 = L_remaining_77_L  # Molar uses 7-7
     u_l3 = L_remaining_33_L  # Canine uses 3-3
-    u_inc = (L_remaining_33_R + L_remaining_33_L) / 2.0  # Average both sides
+    u_inc = l_inc  # Upper incisors match lower incisors EXACTLY (including midline)
 
     # Lower arch
     l_r6 = L_remaining_77_R  # Molar uses 7-7
     l_r3 = L_remaining_33_R  # Canine uses 3-3
     l_l6 = L_remaining_77_L  # Molar uses 7-7
     l_l3 = L_remaining_33_L  # Canine uses 3-3
-    
-    # Lower incisors - DIRECT MIDLINE CORRECTION
-    # Override with midline correction
-    l_inc = -lower_dental_midline
     
     # Note: We could add the allocation on top of midline correction, but clinically
     # the primary goal is midline correction, so we use it directly
