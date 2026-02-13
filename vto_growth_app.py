@@ -414,13 +414,17 @@ def proposed_movement_svg_two_arch(
         """
         tooth_idx: 0=R6, 1=R3, 2=Inc, 3=L3, 4=L6
         
-        Extraction between bicuspids (4-5 area):
-        - R6 moves mesially (RIGHT) toward extraction
-        - R3 moves distally (LEFT) toward extraction  
-        - L3 moves distally (RIGHT) toward extraction
-        - L6 moves mesially (LEFT) toward extraction
+        Extraction (positive): Teeth move toward extraction site
+        - R6 (molar) moves mesially RIGHT →
+        - R3 (canine) moves distally LEFT ←
+        - L3 (canine) moves distally RIGHT →
+        - L6 (molar) moves mesially LEFT ←
         
-        Arrows point TOWARD the extraction site in each quadrant
+        Crowding (negative): Teeth expand away from each other
+        - R6 moves LEFT ←
+        - R3 moves RIGHT →
+        - L3 moves LEFT ←
+        - L6 moves RIGHT →
         """
         v = clean(v)
         # Don't show arrow if movement is essentially zero
@@ -429,22 +433,24 @@ def proposed_movement_svg_two_arch(
         
         L = max(22, min(70, abs(v) * 18))
         
+        # Arrow direction is based on TOOTH TYPE and what movement means
+        # Not just the sign of the value!
+        
         if v > 0:
-            # Positive = closing extraction space
-            # Each tooth moves TOWARD the extraction site in its quadrant
+            # Positive = Extraction/spacing - close toward extraction site
             if tooth_idx == 0:  # R6 (molar)
-                x1, x2 = x - 10, x - 10 + L  # Points RIGHT → (toward extraction)
+                x1, x2 = x - 10, x - 10 + L  # Points RIGHT →
             elif tooth_idx == 1:  # R3 (canine)
-                x1, x2 = x + 10, x + 10 - L  # Points LEFT ← (toward extraction)
+                x1, x2 = x + 10, x + 10 - L  # Points LEFT ←
             elif tooth_idx == 3:  # L3 (canine)
-                x1, x2 = x - 10, x - 10 + L  # Points RIGHT → (toward extraction)
+                x1, x2 = x - 10, x - 10 + L  # Points RIGHT →
             elif tooth_idx == 4:  # L6 (molar)
-                x1, x2 = x + 10, x + 10 - L  # Points LEFT ← (toward extraction)
+                x1, x2 = x + 10, x + 10 - L  # Points LEFT ←
             else:  # Incisors (idx 2)
+                # Incisors follow midline, typically left for positive
                 x1, x2 = x + 10, x + 10 - L  # Points LEFT ←
         else:
-            # Negative = crowding expansion
-            # Teeth move AWAY from each other
+            # Negative = Crowding - expand away from each other
             if tooth_idx == 0:  # R6
                 x1, x2 = x + 10, x + 10 - L  # Points LEFT ←
             elif tooth_idx == 1:  # R3
@@ -1306,19 +1312,20 @@ with tabs[3]:
     has_extraction = L_remaining_77_R > 0.1 or L_remaining_77_L > 0.1
     
     if has_extraction:
-        # EXTRACTION CASE: Use maximum 7-7 value for symmetric closure
-        # This ensures balanced extraction space closure
+        # EXTRACTION CASE
         max_77 = max(L_remaining_77_R, L_remaining_77_L)
         
-        # All teeth use the maximum value for symmetric extraction mechanics
+        # UPPER ARCH: All teeth use maximum value for symmetric extraction
         u_r6 = max_77
         u_r3 = max_77
         u_l6 = max_77
         u_l3 = max_77
-        l_r6 = max_77
-        l_r3 = max_77
-        l_l6 = max_77
-        l_l3 = max_77
+        
+        # LOWER ARCH: Molars use max 7-7, Canines use their own 3-3
+        l_r6 = max_77  # Molars use max for symmetry
+        l_r3 = L_remaining_33_R  # Canines use 3-3
+        l_l6 = max_77  # Molars use max for symmetry
+        l_l3 = L_remaining_33_L  # Canines use 3-3
     else:
         # NON-EXTRACTION CASE: Each segment uses its own remaining value
         # Molars use 7-7, Canines use 3-3
