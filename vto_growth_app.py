@@ -1064,17 +1064,17 @@ with tabs[2]:
     with col1:
         st.markdown("**Midline**")
     with col2:
-        st.markdown(f"<div style='text-align: center;'>{lower_dental_midline:+.1f}</div>", unsafe_allow_html=True)
-    with col3:
         st.markdown(f"<div style='text-align: center;'>{-lower_dental_midline:+.1f}</div>", unsafe_allow_html=True)
+    with col3:
+        st.markdown(f"<div style='text-align: center;'>{lower_dental_midline:+.1f}</div>", unsafe_allow_html=True)
     with col_sep:
         st.markdown("<div style='border-left: 3px solid #666; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
     with col4:
         # Mirror from 3-3
-        st.markdown(f"<div style='text-align: center; padding: 6px; background: #fff3e0; border-radius: 4px;'>{lower_dental_midline:+.1f}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='text-align: center; padding: 6px; background: #fff3e0; border-radius: 4px;'>{-lower_dental_midline:+.1f}</div>", unsafe_allow_html=True)
     with col5:
         # Mirror from 3-3
-        st.markdown(f"<div style='text-align: center; padding: 6px; background: #fff3e0; border-radius: 4px;'>{-lower_dental_midline:+.1f}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='text-align: center; padding: 6px; background: #fff3e0; border-radius: 4px;'>{lower_dental_midline:+.1f}</div>", unsafe_allow_html=True)
     
     # Incisor Position
     col1, col2, col3, col_sep, col4, col5 = st.columns([2, 0.5, 0.5, 0.2, 0.5, 0.5])
@@ -1102,11 +1102,11 @@ with tabs[2]:
     # Calculate Initial Discrepancy
     initial_33_R = (float(st.session_state["ant_cs_33_R"]) + 
                     float(st.session_state["cos_33_R"]) + 
-                    lower_dental_midline + 
+                    (-lower_dental_midline) +  # R uses -midline
                     float(st.session_state["inc_pos_33_R"]))
     initial_33_L = (float(st.session_state["ant_cs_33_L"]) + 
                     float(st.session_state["cos_33_L"]) + 
-                    (-lower_dental_midline) + 
+                    lower_dental_midline +  # L uses +midline
                     float(st.session_state["inc_pos_33_L"]))
     
     # 7-7 includes: Ant C/S + Post C/S + C/S Bicusp + C/S Molars + COS + Midline + Inc Pos (from 3-3)
@@ -1115,14 +1115,14 @@ with tabs[2]:
                     float(st.session_state["cos_bicusp_77_R"]) + 
                     float(st.session_state["cos_molar_77_R"]) +
                     float(st.session_state["cos_33_R"]) +  # COS from 3-3
-                    lower_dental_midline +  # Midline from 3-3
+                    (-lower_dental_midline) +  # Midline from 3-3 (R uses -midline)
                     float(st.session_state["inc_pos_33_R"]))  # Inc Pos from 3-3
     initial_77_L = (float(st.session_state["ant_cs_33_L"]) +  # Ant C/S from 3-3
                     float(st.session_state["post_cs_77_L"]) + 
                     float(st.session_state["cos_bicusp_77_L"]) + 
                     float(st.session_state["cos_molar_77_L"]) +
                     float(st.session_state["cos_33_L"]) +  # COS from 3-3
-                    (-lower_dental_midline) +  # Midline from 3-3
+                    lower_dental_midline +  # Midline from 3-3 (L uses +midline)
                     float(st.session_state["inc_pos_33_L"]))  # Inc Pos from 3-3
     
     # INITIAL DISCREPANCY (Yellow)
