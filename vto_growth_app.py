@@ -1307,12 +1307,16 @@ with tabs[3]:
     has_extraction = L_remaining_77_R > 0.1 or L_remaining_77_L > 0.1
     
     # ======================================
-    # McLAUGHLIN LOGIC (Simple!)
+    # McLAUGHLIN LOGIC (Simplified)
     # ======================================
     # For each side:
     # 1. Incisors fix midline
-    # 2. Canines fix crowding (or 7-7 if extraction)
-    # 3. Molars fix total arch
+    # 2. Canines: 
+    #    - If extraction: split the 7-7 space equally with molars (50/50)
+    #    - If crowding: fix 3-3 crowding
+    # 3. Molars: 
+    #    - If extraction: split the 7-7 space equally with canines (50/50)
+    #    - If crowding: fix 7-7 crowding
     
     # Get midline for each side (already calculated in display)
     midline_R = -lower_dental_midline  # R side uses -midline
@@ -1321,18 +1325,24 @@ with tabs[3]:
     # RIGHT SIDE
     R_inc = -midline_R
     if has_extraction:
-        R_canine = L_remaining_77_R  # Extraction: use 7-7
+        # Split extraction space equally between canine and molar
+        R_canine = L_remaining_77_R / 2.0
+        R_molar = L_remaining_77_R / 2.0
     else:
-        R_canine = L_remaining_33_R  # No extraction: use 3-3
-    R_molar = L_remaining_77_R
+        # Crowding: each fixes its own segment
+        R_canine = L_remaining_33_R
+        R_molar = L_remaining_77_R
     
     # LEFT SIDE
     L_inc = -midline_L
     if has_extraction:
-        L_canine = L_remaining_77_L  # Extraction: use 7-7
+        # Split extraction space equally between canine and molar
+        L_canine = L_remaining_77_L / 2.0
+        L_molar = L_remaining_77_L / 2.0
     else:
-        L_canine = L_remaining_33_L  # No extraction: use 3-3
-    L_molar = L_remaining_77_L
+        # Crowding: each fixes its own segment
+        L_canine = L_remaining_33_L
+        L_molar = L_remaining_77_L
     
     # LOWER ARCH
     l_r6 = R_molar
