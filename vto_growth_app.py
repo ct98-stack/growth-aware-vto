@@ -1292,76 +1292,75 @@ with tabs[3]:
     # CALCULATE MOVEMENTS FROM REMAINING
     # ======================================
     
-    # Get remaining from session state (calculated in Step 2)
-    # McLAUGHLIN VTO: Movement = Remaining Discrepancy (1:1 relationship)
-    
-    L_remaining_33_R = float(st.session_state.get("remaining_L_R", 0.0))  # 3-3 R
-    L_remaining_33_L = float(st.session_state.get("remaining_L_L", 0.0))  # 3-3 L
-    L_remaining_77_R = float(st.session_state.get("remaining_77_R", 0.0))  # 7-7 R
-    L_remaining_77_L = float(st.session_state.get("remaining_77_L", 0.0))  # 7-7 L
+    # ======================================
+# CALCULATE MOVEMENTS FROM REMAINING (McLaughlin-style)
+# ======================================
 
-    # Get midline for incisor correction
-    lower_dental_midline = float(st.session_state.get("lower_dental_midline_mm", 0.0))
-    
-    # Check if extraction is present
-    has_extraction = L_remaining_77_R > 0.1 or L_remaining_77_L > 0.1
-    has_midline = abs(lower_dental_midline) > 0.05
-    
-    if has_extraction and not has_midline:
-        # EXTRACTION WITHOUT MIDLINE
-        max_77 = max(L_remaining_77_R, L_remaining_77_L)
-        
-        # UPPER ARCH: All teeth use maximum value for symmetric extraction
-        u_r6 = max_77
-        u_r3 = max_77
-        u_l6 = max_77
-        u_l3 = max_77
-        
-        # LOWER ARCH: Molars use max 7-7, Canines use their own 3-3
-        l_r6 = max_77  # Molars use max for symmetry
-        l_r3 = L_remaining_33_R  # Canines use 3-3
-        l_l6 = max_77  # Molars use max for symmetry
-        l_l3 = L_remaining_33_L  # Canines use 3-3
-    elif has_midline:
-        # MIDLINE PRESENT: Normalize to facial midline first
-        # After midline correction, average the normalized values
-        
-        # Normalize by midline
-        norm_33_R = L_remaining_33_R + lower_dental_midline
-        norm_33_L = L_remaining_33_L - lower_dental_midline
-        norm_77_R = L_remaining_77_R + lower_dental_midline  
-        norm_77_L = L_remaining_77_L - lower_dental_midline
-        
-        # Average normalized values
-        avg_33 = (norm_33_R + norm_33_L) / 2.0
-        avg_77 = (norm_77_R + norm_77_L) / 2.0
-        
-        # UPPER ARCH: All use averaged values
-        u_r6 = avg_77
-        u_r3 = avg_33
-        u_l6 = avg_77
-        u_l3 = avg_33
-        
-        # LOWER ARCH: All use averaged values
-        l_r6 = avg_77
-        l_r3 = avg_33
-        l_l6 = avg_77
-        l_l3 = avg_33
-    else:
-        # NO EXTRACTION, NO MIDLINE: Each segment uses its own remaining value
-        u_r6 = L_remaining_77_R
-        u_r3 = L_remaining_33_R
-        u_l6 = L_remaining_77_L
-        u_l3 = L_remaining_33_L
-        l_r6 = L_remaining_77_R
-        l_r3 = L_remaining_33_R
-        l_l6 = L_remaining_77_L
-        l_l3 = L_remaining_33_L
-    
-    # Incisors ALWAYS use direct midline correction
-    # This achieves facial midline coincidence
-    l_inc = -lower_dental_midline
-    u_inc = l_inc
+# Inputs from Step 2
+rem33_R = float(st.session_state.get("remaining_L_R", 0.0))     # 3-3 Right remaining
+rem33_L = float(st.session_state.get("remaining_L_L", 0.0))     # 3-3 Left remaining
+rem77_R = float(st.session_state.get("remaining_77_R", 0.0))    # 7-7 Right remaining
+rem77_L = float(st.session_state.get("remaining_77_L", 0.0))    # 7-7 Left remaining
+
+# Lower dental midline input convention (Step 1 help):
+#   + = dental midline shifted to patient's RIGHT
+# Step 3 movement convention:
+#   + = move toward patient's LEFT
+lower_midline = float(st.session_state.get("lower_dental_midline_mm", 0.0))
+
+# --- McLaughlin-style decomposition ---
+# Anterior requirement drives canines + incisors
+ant_R = rem33_R
+ant_L = rem33_L
+
+# Posterior requirement (anchorage / molar movement) is the "extra" discrepancy in 7-7 beyond 3-3
+# This is the key fix: molars follow (7-7 minus 3-3), not 7-7 directly, and canines do NOT follow 7-7.
+post_R = rem77_R - rem33_R
+post_L = rem77_L - rem33_L
+
+# Optional: clamp tiny numerical noise
+def z(x: float) -> float:
+    return 0.0 if abs(x) < 0.05 else float(x)
+
+ant_R, ant_L, post_R, post_L = map(z, [ant_R, ant_L, post_R, post_L])
+
+# --- Allocate anterior (3-3) between incisors and canines ---
+# McLaughlin-style VTO does NOT force "all teeth move the full amount".
+# Use a simple default split inside the anterior segment:
+INC_SHARE = 0.60   # 60% of anterior discrepancy handled by incisors
+CAN_SHARE = 0.40   # 40% handled by canines
+
+# If you later want anchorage presets, you can change INC_SHARE/CAN_SHARE or add a UI control.
+
+# Symmetric anterior component (if you want to avoid “R vs L different” when asymmetry is only midline)
+# If your Step 2 left/right differences reflect real unilateral crowding, keep side-specific instead.
+ant_sym = z((ant_R + ant_L) / 2.0)
+
+# Use symmetric anterior for both sides (cleaner McLaughlin “planning” feel)
+canine_move = z(ant_sym * CAN_SHARE)
+incisor_base = z(ant_sym * INC_SHARE)
+
+# Midline correction should be incisor-only (LOWER ONLY per your requirement)
+# +midline means dentals are to patient's RIGHT -> move incisors LEFT -> positive movement
+incisor_midline_correction = z(lower_midline)
+
+# LOWER movements
+l_r3 = canine_move
+l_l3 = canine_move
+l_inc = z(incisor_base + incisor_midline_correction)
+
+# Molars follow posterior component (can be asymmetric)
+l_r6 = z(post_R)
+l_l6 = z(post_L)
+
+# UPPER movements:
+# You currently don’t compute Step 2 for upper, so the cleanest approach is to mirror the pattern
+# (same anterior split, same posterior component) unless/until you add upper Step 2.
+u_r3 = l_r3
+u_l3 = l_l3
+u_inc = z(incisor_base)  # no upper midline correction here unless you add an upper midline target in Step 2
+u_r6 = l_r6
+u_l6 = l_l6
 
     # ======================================
     # SHOW SUMMARY TABLE
