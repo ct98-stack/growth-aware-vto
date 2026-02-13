@@ -1365,41 +1365,41 @@ u_l6 = l_l6
     # ======================================
     # SHOW SUMMARY TABLE
     # ======================================
-    st.markdown("### Movement Summary (mm)")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown("**Upper Arch**")
-        upper_movements = pd.DataFrame([
-            ["R6", f"{u_r6:+.1f}"],
-            ["R3", f"{u_r3:+.1f}"],
-            ["Inc", f"{u_inc:+.1f}"],
-            ["L3", f"{u_l3:+.1f}"],
-            ["L6", f"{u_l6:+.1f}"],
-        ], columns=["Tooth", "Movement"])
-        st.dataframe(upper_movements, use_container_width=True, hide_index=True)
-    
-    with col2:
-        st.markdown("**Lower Arch**")
-        lower_movements = pd.DataFrame([
-            ["R6", f"{l_r6:+.1f}"],
-            ["R3", f"{l_r3:+.1f}"],
-            ["Inc", f"{l_inc:+.1f}"],
-            ["L3", f"{l_l3:+.1f}"],
-            ["L6", f"{l_l6:+.1f}"],
-        ], columns=["Tooth", "Movement"])
-        st.dataframe(lower_movements, use_container_width=True, hide_index=True)
+st.markdown("### Movement Summary (mm)")
 
-    st.markdown(
-        "<div class='hint'>"
-        "Positive = toward patient's left; Negative = toward patient's right<br>"
-        "<b>Lower incisor movement applies DIRECT midline correction</b> to achieve facial coincidence"
-        "</div>",
-        unsafe_allow_html=True
-    )
+col1, col2 = st.columns(2)
 
-    st.markdown("<hr/>", unsafe_allow_html=True)
+with col1:
+    st.markdown("**Upper Arch**")
+    upper_movements = pd.DataFrame([
+        ["R6", f"{u_r6:+.1f}"],
+        ["R3", f"{u_r3:+.1f}"],
+        ["Inc", f"{u_inc:+.1f}"],
+        ["L3", f"{u_l3:+.1f}"],
+        ["L6", f"{u_l6:+.1f}"],
+    ], columns=["Tooth", "Movement"])
+    st.dataframe(upper_movements, use_container_width=True, hide_index=True)
+
+with col2:
+    st.markdown("**Lower Arch**")
+    lower_movements = pd.DataFrame([
+        ["R6", f"{l_r6:+.1f}"],
+        ["R3", f"{l_r3:+.1f}"],
+        ["Inc", f"{l_inc:+.1f}"],
+        ["L3", f"{l_l3:+.1f}"],
+        ["L6", f"{l_l6:+.1f}"],
+    ], columns=["Tooth", "Movement"])
+    st.dataframe(lower_movements, use_container_width=True, hide_index=True)
+
+st.markdown(
+    "<div class='hint'>"
+    "Positive = toward patient's left; Negative = toward patient's right<br>"
+    "<b>Lower incisor movement applies DIRECT midline correction</b> to achieve facial coincidence"
+    "</div>",
+    unsafe_allow_html=True
+)
+
+st.markdown("<hr/>", unsafe_allow_html=True)
 
     # ======================================
     # RENDER THE VISUALIZATION
