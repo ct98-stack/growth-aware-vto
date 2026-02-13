@@ -450,13 +450,13 @@ def proposed_movement_svg_two_arch(
                 # Incisors follow midline, typically left for positive
                 x1, x2 = x + 10, x + 10 - L  # Points LEFT ←
         else:
-            # Negative = Crowding - expand away from each other
+            # Negative = Crowding - expand away from midline
             if tooth_idx == 0:  # R6
                 x1, x2 = x + 10, x + 10 - L  # Points LEFT ←
-            elif tooth_idx == 1:  # R3
-                x1, x2 = x - 10, x - 10 + L  # Points RIGHT →
-            elif tooth_idx == 3:  # L3
-                x1, x2 = x + 10, x + 10 - L  # Points LEFT ←
+            elif tooth_idx == 1:  # R3 (canine)
+                x1, x2 = x + 10, x + 10 - L  # Points LEFT ← (away from midline)
+            elif tooth_idx == 3:  # L3 (canine)
+                x1, x2 = x - 10, x - 10 + L  # Points RIGHT → (away from midline)
             elif tooth_idx == 4:  # L6
                 x1, x2 = x - 10, x - 10 + L  # Points RIGHT →
             else:  # Incisors
