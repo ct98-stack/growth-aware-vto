@@ -1347,14 +1347,14 @@ with tabs[3]:
     # LOWER ARCH
     l_r6 = R_molar
     l_r3 = R_canine
-    l_inc = R_inc  # Use right incisor value for lower
+    l_inc = R_inc  # Lower incisors correct LOWER midline
     l_l3 = L_canine
     l_l6 = L_molar
     
-    # UPPER ARCH (matches lower for Class I)
+    # UPPER ARCH (matches lower for Class I, but NO midline correction)
     u_r6 = R_molar
     u_r3 = R_canine
-    u_inc = R_inc  # Upper matches lower incisors
+    u_inc = 0.0  # Upper incisors DON'T move (upper midline already correct)
     u_l3 = L_canine
     u_l6 = L_molar
 
