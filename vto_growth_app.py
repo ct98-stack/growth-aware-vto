@@ -1267,17 +1267,21 @@ with tabs[2]:
 # =========================================================
 # STEP 3
 # =========================================================
+# =========================================================
+# STEP 3
+# =========================================================
 with tabs[3]:
     st.markdown('<div class="panel"><div class="panel-title">Step 3 — Proposed Dental Movement</div>', unsafe_allow_html=True)
     st.markdown(
         "<div class='band-gray'>"
-        "<b>Allocates remaining discrepancy</b> across tooth segments using expected movement patterns. "
-        "Arrows show direction/magnitude of movement needed."
+        "<b>McLaughlin/Dolphin panel logic:</b><br>"
+        "• <b>Molars (6)</b> follow the <b>7–7 Remaining Discrepancy</b><br>"
+        "• <b>Canines (3)</b> + <b>Incisors</b> follow the <b>3–3 Remaining Discrepancy</b><br>"
+        "• <b>Incisor midline correction</b> (optional): uses the lower dental midline value"
         "</div>",
         unsafe_allow_html=True
     )
 
-    # Treatment goal selector
     st.markdown('<div class="band-blue">Treatment Goal</div>', unsafe_allow_html=True)
     treat_to = st.selectbox(
         "Treat to occlusion:",
@@ -1288,118 +1292,114 @@ with tabs[3]:
 
     st.markdown("<hr/>", unsafe_allow_html=True)
 
-    # ======================================
-    # CALCULATE MOVEMENTS FROM REMAINING
-    # ======================================
-    
-    # ======================================
-# CALCULATE MOVEMENTS FROM REMAINING (McLaughlin-style)
-# ======================================
+    # ---------------------------
+    # Pull remaining values from Step 2
+    # ---------------------------
+    L_remaining_33_R = float(st.session_state.get("remaining_L_R", 0.0))   # 3–3 Right
+    L_remaining_33_L = float(st.session_state.get("remaining_L_L", 0.0))   # 3–3 Left
+    L_remaining_77_R = float(st.session_state.get("remaining_77_R", 0.0))  # 7–7 Right
+    L_remaining_77_L = float(st.session_state.get("remaining_77_L", 0.0))  # 7–7 Left
 
-# Inputs from Step 2
-rem33_R = float(st.session_state.get("remaining_L_R", 0.0))     # 3-3 Right remaining
-rem33_L = float(st.session_state.get("remaining_L_L", 0.0))     # 3-3 Left remaining
-rem77_R = float(st.session_state.get("remaining_77_R", 0.0))    # 7-7 Right remaining
-rem77_L = float(st.session_state.get("remaining_77_L", 0.0))    # 7-7 Left remaining
+    lower_dental_midline = float(st.session_state.get("lower_dental_midline_mm", 0.0))
 
-# Lower dental midline input convention (Step 1 help):
-#   + = dental midline shifted to patient's RIGHT
-# Step 3 movement convention:
-#   + = move toward patient's LEFT
-lower_midline = float(st.session_state.get("lower_dental_midline_mm", 0.0))
+    # ---------------------------
+    # McLaughlin/Dolphin mapping:
+    #   molars  <- 7–7 remaining
+    #   canines <- 3–3 remaining
+    #   incisors <- 3–3 remaining (then optionally add/override with midline correction)
+    # ---------------------------
+    def clean(v: float) -> float:
+        return 0.0 if abs(v) < 0.05 else float(v)
 
-# --- McLaughlin-style decomposition ---
-# Anterior requirement drives canines + incisors
-ant_R = rem33_R
-ant_L = rem33_L
+    # LOWER ARCH
+    l_r6 = clean(L_remaining_77_R)
+    l_l6 = clean(L_remaining_77_L)
 
-# Posterior requirement (anchorage / molar movement) is the "extra" discrepancy in 7-7 beyond 3-3
-# This is the key fix: molars follow (7-7 minus 3-3), not 7-7 directly, and canines do NOT follow 7-7.
-post_R = rem77_R - rem33_R
-post_L = rem77_L - rem33_L
+    l_r3 = clean(L_remaining_33_R)
+    l_l3 = clean(L_remaining_33_L)
 
-# Optional: clamp tiny numerical noise
-def z(x: float) -> float:
-    return 0.0 if abs(x) < 0.05 else float(x)
+    # Base incisor movement from 3–3 (panel logic)
+    l_inc_base_R = clean(L_remaining_33_R)
+    l_inc_base_L = clean(L_remaining_33_L)
 
-ant_R, ant_L, post_R, post_L = map(z, [ant_R, ant_L, post_R, post_L])
+    # Optional: incisor midline correction (your convention)
+    # If you want incisors to *only* reflect midline, keep "override" on.
+    # If you want incisors to reflect 3–3 AND midline, set override=False.
+    override_incisor_with_midline = True
 
-# --- Allocate anterior (3-3) between incisors and canines ---
-# McLaughlin-style VTO does NOT force "all teeth move the full amount".
-# Use a simple default split inside the anterior segment:
-INC_SHARE = 0.60   # 60% of anterior discrepancy handled by incisors
-CAN_SHARE = 0.40   # 40% handled by canines
+    if override_incisor_with_midline:
+        l_inc = clean(-lower_dental_midline)
+    else:
+        # combine: average the 3–3 incisor requirement + midline correction
+        l_inc = clean(((l_inc_base_R + l_inc_base_L) / 2.0) + (-lower_dental_midline))
 
-# If you later want anchorage presets, you can change INC_SHARE/CAN_SHARE or add a UI control.
+    # UPPER ARCH
+    # If you don't have a separate upper discrepancy table, the safest “panel-consistent”
+    # behavior is to mirror the same segment mapping. (Later you can swap these with true
+    # upper remaining values.)
+    u_r6 = clean(L_remaining_77_R)
+    u_l6 = clean(L_remaining_77_L)
 
-# Symmetric anterior component (if you want to avoid “R vs L different” when asymmetry is only midline)
-# If your Step 2 left/right differences reflect real unilateral crowding, keep side-specific instead.
-ant_sym = z((ant_R + ant_L) / 2.0)
+    u_r3 = clean(L_remaining_33_R)
+    u_l3 = clean(L_remaining_33_L)
 
-# Use symmetric anterior for both sides (cleaner McLaughlin “planning” feel)
-canine_move = z(ant_sym * CAN_SHARE)
-incisor_base = z(ant_sym * INC_SHARE)
+    if override_incisor_with_midline:
+        u_inc = clean(-lower_dental_midline)  # mirror your lower midline logic for now
+    else:
+        u_inc = clean(((L_remaining_33_R + L_remaining_33_L) / 2.0) + (-lower_dental_midline))
 
-# Midline correction should be incisor-only (LOWER ONLY per your requirement)
-# +midline means dentals are to patient's RIGHT -> move incisors LEFT -> positive movement
-incisor_midline_correction = z(lower_midline)
+    # ---------------------------
+    # Summary tables
+    # ---------------------------
+    st.markdown("### Movement Summary (mm)")
 
-# LOWER movements
-l_r3 = canine_move
-l_l3 = canine_move
-l_inc = z(incisor_base + incisor_midline_correction)
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("**Upper Arch**")
+        upper_movements = pd.DataFrame([
+            ["R6", f"{u_r6:+.1f}"],
+            ["R3", f"{u_r3:+.1f}"],
+            ["Inc", f"{u_inc:+.1f}"],
+            ["L3", f"{u_l3:+.1f}"],
+            ["L6", f"{u_l6:+.1f}"],
+        ], columns=["Tooth", "Movement"])
+        st.dataframe(upper_movements, use_container_width=True, hide_index=True)
 
-# Molars follow posterior component (can be asymmetric)
-l_r6 = z(post_R)
-l_l6 = z(post_L)
+    with col2:
+        st.markdown("**Lower Arch**")
+        lower_movements = pd.DataFrame([
+            ["R6", f"{l_r6:+.1f}"],
+            ["R3", f"{l_r3:+.1f}"],
+            ["Inc", f"{l_inc:+.1f}"],
+            ["L3", f"{l_l3:+.1f}"],
+            ["L6", f"{l_l6:+.1f}"],
+        ], columns=["Tooth", "Movement"])
+        st.dataframe(lower_movements, use_container_width=True, hide_index=True)
 
-# UPPER movements:
-# You currently don’t compute Step 2 for upper, so the cleanest approach is to mirror the pattern
-# (same anterior split, same posterior component) unless/until you add upper Step 2.
-u_r3 = l_r3
-u_l3 = l_l3
-u_inc = z(incisor_base)  # no upper midline correction here unless you add an upper midline target in Step 2
-u_r6 = l_r6
-u_l6 = l_l6
+    st.markdown(
+        "<div class='hint'>"
+        "Positive = toward patient's left; Negative = toward patient's right.<br>"
+        "<b>Core rule:</b> 6's use 7–7 remaining; 3's + incisors use 3–3 remaining."
+        "</div>",
+        unsafe_allow_html=True
+    )
 
-    # ======================================
-    # SHOW SUMMARY TABLE
-    # ======================================
-st.markdown("### Movement Summary (mm)")
+    st.markdown("<hr/>", unsafe_allow_html=True)
 
-col1, col2 = st.columns(2)
+    # ---------------------------
+    # Render Step 3 SVG
+    # IMPORTANT: keep this call *inside* Step 3 (inside tabs[3]),
+    # not at top-level, so u_r6 etc are defined.
+    # ---------------------------
+    st.markdown("### Visual Treatment Objective")
 
-with col1:
-    st.markdown("**Upper Arch**")
-    upper_movements = pd.DataFrame([
-        ["R6", f"{u_r6:+.1f}"],
-        ["R3", f"{u_r3:+.1f}"],
-        ["Inc", f"{u_inc:+.1f}"],
-        ["L3", f"{u_l3:+.1f}"],
-        ["L6", f"{u_l6:+.1f}"],
-    ], columns=["Tooth", "Movement"])
-    st.dataframe(upper_movements, use_container_width=True, hide_index=True)
+    svg = proposed_movement_svg_two_arch(
+        u_r6, u_r3, u_inc, u_l3, u_l6,
+        l_r6, l_r3, l_inc, l_l3, l_l6,
+    )
+    components.html(svg, height=760, scrolling=False)
 
-with col2:
-    st.markdown("**Lower Arch**")
-    lower_movements = pd.DataFrame([
-        ["R6", f"{l_r6:+.1f}"],
-        ["R3", f"{l_r3:+.1f}"],
-        ["Inc", f"{l_inc:+.1f}"],
-        ["L3", f"{l_l3:+.1f}"],
-        ["L6", f"{l_l6:+.1f}"],
-    ], columns=["Tooth", "Movement"])
-    st.dataframe(lower_movements, use_container_width=True, hide_index=True)
-
-st.markdown(
-    "<div class='hint'>"
-    "Positive = toward patient's left; Negative = toward patient's right<br>"
-    "<b>Lower incisor movement applies DIRECT midline correction</b> to achieve facial coincidence"
-    "</div>",
-    unsafe_allow_html=True
-)
-
-st.markdown("<hr/>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
     # ======================================
     # RENDER THE VISUALIZATION
