@@ -414,17 +414,14 @@ def proposed_movement_svg_two_arch(
         """
         tooth_idx: 0=R6, 1=R3, 2=Inc, 3=L3, 4=L6
         
-        Extraction (positive): Teeth move toward extraction site
-        - R6 (molar) moves mesially RIGHT →
-        - R3 (canine) moves distally LEFT ←
-        - L3 (canine) moves distally RIGHT →
-        - L6 (molar) moves mesially LEFT ←
+        Extraction mechanics:
+        - Extraction space is between canine (3) and molar (6) 
+        - Both canine and molar move TOWARD the extraction space
+        - R6 moves RIGHT (mesially), R3 moves LEFT (distally) → converge
+        - L6 moves LEFT (mesially), L3 moves RIGHT (distally) → converge
         
-        Crowding (negative): Teeth expand away from each other
-        - R6 moves LEFT ←
-        - R3 moves RIGHT →
-        - L3 moves LEFT ←
-        - L6 moves RIGHT →
+        Crowding mechanics:
+        - Teeth expand away from each other
         """
         v = clean(v)
         # Don't show arrow if movement is essentially zero
@@ -433,33 +430,31 @@ def proposed_movement_svg_two_arch(
         
         L = max(22, min(70, abs(v) * 18))
         
-        # Arrow direction is based on TOOTH TYPE and what movement means
-        # Not just the sign of the value!
-        
-        if v > 0:
-            # Positive = Extraction/spacing - close toward extraction site
-            if tooth_idx == 0:  # R6 (molar)
+        # Arrow direction based on tooth type and biomechanics
+        if tooth_idx == 0:  # R6 (right molar)
+            if v > 0:  # Extraction/spacing
+                x1, x2 = x - 10, x - 10 + L  # Points RIGHT → (toward extraction)
+            else:  # Crowding
+                x1, x2 = x + 10, x + 10 - L  # Points LEFT ←
+        elif tooth_idx == 1:  # R3 (right canine)
+            if v > 0:  # Extraction/spacing
+                x1, x2 = x + 10, x + 10 - L  # Points LEFT ← (toward extraction)
+            else:  # Crowding
+                x1, x2 = x + 10, x + 10 - L  # Points LEFT ← (expand away from midline)
+        elif tooth_idx == 3:  # L3 (left canine)
+            if v > 0:  # Extraction/spacing
+                x1, x2 = x - 10, x - 10 + L  # Points RIGHT → (toward extraction)
+            else:  # Crowding  
+                x1, x2 = x - 10, x - 10 + L  # Points RIGHT → (expand away from midline)
+        elif tooth_idx == 4:  # L6 (left molar)
+            if v > 0:  # Extraction/spacing
+                x1, x2 = x + 10, x + 10 - L  # Points LEFT ← (toward extraction)
+            else:  # Crowding
                 x1, x2 = x - 10, x - 10 + L  # Points RIGHT →
-            elif tooth_idx == 1:  # R3 (canine)
+        else:  # Incisors (idx 2)
+            if v > 0:
                 x1, x2 = x + 10, x + 10 - L  # Points LEFT ←
-            elif tooth_idx == 3:  # L3 (canine)
-                x1, x2 = x - 10, x - 10 + L  # Points RIGHT →
-            elif tooth_idx == 4:  # L6 (molar)
-                x1, x2 = x + 10, x + 10 - L  # Points LEFT ←
-            else:  # Incisors (idx 2)
-                # Incisors follow midline, typically left for positive
-                x1, x2 = x + 10, x + 10 - L  # Points LEFT ←
-        else:
-            # Negative = Crowding - expand away from midline
-            if tooth_idx == 0:  # R6
-                x1, x2 = x + 10, x + 10 - L  # Points LEFT ←
-            elif tooth_idx == 1:  # R3 (canine)
-                x1, x2 = x + 10, x + 10 - L  # Points LEFT ← (away from midline)
-            elif tooth_idx == 3:  # L3 (canine)
-                x1, x2 = x - 10, x - 10 + L  # Points RIGHT → (away from midline)
-            elif tooth_idx == 4:  # L6
-                x1, x2 = x - 10, x - 10 + L  # Points RIGHT →
-            else:  # Incisors
+            else:
                 x1, x2 = x - 10, x - 10 + L  # Points RIGHT →
 
         return f"""
@@ -1310,9 +1305,10 @@ with tabs[3]:
     
     # Check if extraction is present
     has_extraction = L_remaining_77_R > 0.1 or L_remaining_77_L > 0.1
+    has_midline = abs(lower_dental_midline) > 0.05
     
-    if has_extraction:
-        # EXTRACTION CASE
+    if has_extraction and not has_midline:
+        # EXTRACTION WITHOUT MIDLINE
         max_77 = max(L_remaining_77_R, L_remaining_77_L)
         
         # UPPER ARCH: All teeth use maximum value for symmetric extraction
@@ -1326,9 +1322,33 @@ with tabs[3]:
         l_r3 = L_remaining_33_R  # Canines use 3-3
         l_l6 = max_77  # Molars use max for symmetry
         l_l3 = L_remaining_33_L  # Canines use 3-3
+    elif has_midline:
+        # MIDLINE PRESENT: Normalize to facial midline first
+        # After midline correction, average the normalized values
+        
+        # Normalize by midline
+        norm_33_R = L_remaining_33_R + lower_dental_midline
+        norm_33_L = L_remaining_33_L - lower_dental_midline
+        norm_77_R = L_remaining_77_R + lower_dental_midline  
+        norm_77_L = L_remaining_77_L - lower_dental_midline
+        
+        # Average normalized values
+        avg_33 = (norm_33_R + norm_33_L) / 2.0
+        avg_77 = (norm_77_R + norm_77_L) / 2.0
+        
+        # UPPER ARCH: All use averaged values
+        u_r6 = avg_77
+        u_r3 = avg_33
+        u_l6 = avg_77
+        u_l3 = avg_33
+        
+        # LOWER ARCH: All use averaged values
+        l_r6 = avg_77
+        l_r3 = avg_33
+        l_l6 = avg_77
+        l_l3 = avg_33
     else:
-        # NON-EXTRACTION CASE: Each segment uses its own remaining value
-        # Molars use 7-7, Canines use 3-3
+        # NO EXTRACTION, NO MIDLINE: Each segment uses its own remaining value
         u_r6 = L_remaining_77_R
         u_r3 = L_remaining_33_R
         u_l6 = L_remaining_77_L
@@ -1342,9 +1362,6 @@ with tabs[3]:
     # This achieves facial midline coincidence
     l_inc = -lower_dental_midline
     u_inc = l_inc
-    
-    # Note: We could add the allocation on top of midline correction, but clinically
-    # the primary goal is midline correction, so we use it directly
 
     # ======================================
     # SHOW SUMMARY TABLE
