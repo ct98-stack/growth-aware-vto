@@ -1267,20 +1267,17 @@ with tabs[2]:
 # =========================================================
 # STEP 3
 # =========================================================
-# =========================================================
-# STEP 3
-# =========================================================
 with tabs[3]:
     st.markdown('<div class="panel"><div class="panel-title">Step 3 — Proposed Dental Movement</div>', unsafe_allow_html=True)
     st.markdown(
         "<div class='band-gray'>"
-        "<b>Allocates remaining discrepancy</b> across tooth segments using McLaughlin/Dolphin-style rules. "
-        "Incisors correct midline directly. Canines follow 3–3 unless there is posterior space-closure/extraction, "
-        "in which case canines follow 7–7 (they close extraction space). Molars follow 7–7."
+        "<b>Allocates remaining discrepancy</b> across tooth segments using expected movement patterns. "
+        "Arrows show direction/magnitude of movement needed."
         "</div>",
         unsafe_allow_html=True
     )
 
+    # Treatment goal selector
     st.markdown('<div class="band-blue">Treatment Goal</div>', unsafe_allow_html=True)
     treat_to = st.selectbox(
         "Treat to occlusion:",
@@ -1291,119 +1288,110 @@ with tabs[3]:
 
     st.markdown("<hr/>", unsafe_allow_html=True)
 
-    # --------------------------
-    # Pull the calculated values
-    # --------------------------
-    L_remaining_33_R = float(st.session_state.get("remaining_L_R", 0.0))   # lower 3-3 R
-    L_remaining_33_L = float(st.session_state.get("remaining_L_L", 0.0))   # lower 3-3 L
-    L_remaining_77_R = float(st.session_state.get("remaining_77_R", 0.0))  # lower 7-7 R
-    L_remaining_77_L = float(st.session_state.get("remaining_77_L", 0.0))  # lower 7-7 L
+    # ======================================
+    # CALCULATE MOVEMENTS FROM REMAINING
+    # ======================================
+    
+    # Get remaining from session state (calculated in Step 2)
+    # McLAUGHLIN VTO: Movement = Remaining Discrepancy (1:1 relationship)
+    
+    L_remaining_33_R = float(st.session_state.get("remaining_L_R", 0.0))  # 3-3 R
+    L_remaining_33_L = float(st.session_state.get("remaining_L_L", 0.0))  # 3-3 L
+    L_remaining_77_R = float(st.session_state.get("remaining_77_R", 0.0))  # 7-7 R
+    L_remaining_77_L = float(st.session_state.get("remaining_77_L", 0.0))  # 7-7 L
 
-    # Midline input from Step 1 (your help text says: + = shifted to patient's RIGHT)
-    lower_midline = float(st.session_state.get("lower_dental_midline_mm", 0.0))
-
-    # Detect whether posterior space closure mechanics are intended.
-    # Use the ACTUAL extraction inputs if present, otherwise fall back to "posterior remaining > 0".
-    ext77_R = float(st.session_state.get("ext_77_R", 0.0))
-    ext77_L = float(st.session_state.get("ext_77_L", 0.0))
-    ext33_R = float(st.session_state.get("ext_33_R", 0.0))
-    ext33_L = float(st.session_state.get("ext_33_L", 0.0))
-
-    posterior_space_closure = (
-        abs(ext77_R) > 0.05 or abs(ext77_L) > 0.05 or
-        abs(ext33_R) > 0.05 or abs(ext33_L) > 0.05 or
-        (L_remaining_77_R > 0.05 or L_remaining_77_L > 0.05)
-    )
-
-    # --------------------------
-    # Core McLaughlin/Dolphin movement rules
-    # --------------------------
-    # 1) INCISORS: direct midline correction
-    # If midline is +1.0 mm to patient's RIGHT, you move incisors LEFT by 1.0 => -1.0
-    l_inc = -lower_midline
-    u_inc = l_inc  # if you want upper incisors to follow lower midline correction in your simplified model
-
-    # 2) MOLARS: follow 7–7 remaining discrepancy (posterior)
-    l_r6 = L_remaining_77_R
-    l_l6 = L_remaining_77_L
-    u_r6 = L_remaining_77_R
-    u_l6 = L_remaining_77_L
-
-    # 3) CANINES:
-    # - if posterior space closure/extraction mechanics are active -> canines follow 7–7 (they close that space)
-    # - else -> canines follow 3–3 (anterior discrepancy drives them)
-    if posterior_space_closure:
-        l_r3 = L_remaining_77_R
-        l_l3 = L_remaining_77_L
-        u_r3 = L_remaining_77_R
-        u_l3 = L_remaining_77_L
+    # Get midline for incisor correction
+    lower_dental_midline = float(st.session_state.get("lower_dental_midline_mm", 0.0))
+    
+    # Check if extraction is present
+    has_extraction = L_remaining_77_R > 0.1 or L_remaining_77_L > 0.1
+    
+    # ======================================
+    # McLAUGHLIN LOGIC (Simple!)
+    # ======================================
+    # For each side:
+    # 1. Incisors fix midline
+    # 2. Canines fix crowding (or 7-7 if extraction)
+    # 3. Molars fix total arch
+    
+    # Get midline for each side (already calculated in display)
+    midline_R = -lower_dental_midline  # R side uses -midline
+    midline_L = lower_dental_midline   # L side uses +midline
+    
+    # RIGHT SIDE
+    R_inc = -midline_R
+    if has_extraction:
+        R_canine = L_remaining_77_R  # Extraction: use 7-7
     else:
-        l_r3 = L_remaining_33_R
-        l_l3 = L_remaining_33_L
-        u_r3 = L_remaining_33_R
-        u_l3 = L_remaining_33_L
+        R_canine = L_remaining_33_R  # No extraction: use 3-3
+    R_molar = L_remaining_77_R
+    
+    # LEFT SIDE
+    L_inc = -midline_L
+    if has_extraction:
+        L_canine = L_remaining_77_L  # Extraction: use 7-7
+    else:
+        L_canine = L_remaining_33_L  # No extraction: use 3-3
+    L_molar = L_remaining_77_L
+    
+    # LOWER ARCH
+    l_r6 = R_molar
+    l_r3 = R_canine
+    l_inc = R_inc  # Use right incisor value for lower
+    l_l3 = L_canine
+    l_l6 = L_molar
+    
+    # UPPER ARCH (matches lower for Class I)
+    u_r6 = R_molar
+    u_r3 = R_canine
+    u_inc = R_inc  # Upper matches lower incisors
+    u_l3 = L_canine
+    u_l6 = L_molar
 
-    # Optional: if you want symmetry when there is posterior space closure, you can uncomment:
-    # if posterior_space_closure:
-    #     max77 = max(L_remaining_77_R, L_remaining_77_L)
-    #     l_r6 = l_l6 = u_r6 = u_l6 = max77
-    #     l_r3 = l_l3 = u_r3 = u_l3 = max77
-
-    # --------------------------
-    # Show summary
-    # --------------------------
+    # ======================================
+    # SHOW SUMMARY TABLE
+    # ======================================
     st.markdown("### Movement Summary (mm)")
-
-    c1, c2 = st.columns(2)
-    with c1:
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
         st.markdown("**Upper Arch**")
-        st.dataframe(
-            pd.DataFrame(
-                [
-                    ["R6", f"{u_r6:+.1f}"],
-                    ["R3", f"{u_r3:+.1f}"],
-                    ["Inc", f"{u_inc:+.1f}"],
-                    ["L3", f"{u_l3:+.1f}"],
-                    ["L6", f"{u_l6:+.1f}"],
-                ],
-                columns=["Tooth", "Movement"],
-            ),
-            use_container_width=True,
-            hide_index=True,
-        )
-
-    with c2:
+        upper_movements = pd.DataFrame([
+            ["R6", f"{u_r6:+.1f}"],
+            ["R3", f"{u_r3:+.1f}"],
+            ["Inc", f"{u_inc:+.1f}"],
+            ["L3", f"{u_l3:+.1f}"],
+            ["L6", f"{u_l6:+.1f}"],
+        ], columns=["Tooth", "Movement"])
+        st.dataframe(upper_movements, use_container_width=True, hide_index=True)
+    
+    with col2:
         st.markdown("**Lower Arch**")
-        st.dataframe(
-            pd.DataFrame(
-                [
-                    ["R6", f"{l_r6:+.1f}"],
-                    ["R3", f"{l_r3:+.1f}"],
-                    ["Inc", f"{l_inc:+.1f}"],
-                    ["L3", f"{l_l3:+.1f}"],
-                    ["L6", f"{l_l6:+.1f}"],
-                ],
-                columns=["Tooth", "Movement"],
-            ),
-            use_container_width=True,
-            hide_index=True,
-        )
+        lower_movements = pd.DataFrame([
+            ["R6", f"{l_r6:+.1f}"],
+            ["R3", f"{l_r3:+.1f}"],
+            ["Inc", f"{l_inc:+.1f}"],
+            ["L3", f"{l_l3:+.1f}"],
+            ["L6", f"{l_l6:+.1f}"],
+        ], columns=["Tooth", "Movement"])
+        st.dataframe(lower_movements, use_container_width=True, hide_index=True)
 
     st.markdown(
         "<div class='hint'>"
-        "Incisor movement is <b>-lower dental midline</b> (direct correction). "
-        "Molars follow 7–7. Canines follow 3–3 unless posterior space-closure/extraction is present."
+        "Positive = toward patient's left; Negative = toward patient's right<br>"
+        "<b>Lower incisor movement applies DIRECT midline correction</b> to achieve facial coincidence"
         "</div>",
         unsafe_allow_html=True
     )
 
     st.markdown("<hr/>", unsafe_allow_html=True)
 
-    # --------------------------
-    # Render the SVG
-    # --------------------------
+    # ======================================
+    # RENDER THE VISUALIZATION
+    # ======================================
     st.markdown("### Visual Treatment Objective")
-
+    
     svg = proposed_movement_svg_two_arch(
         u_r6, u_r3, u_inc, u_l3, u_l6,
         l_r6, l_r3, l_inc, l_l3, l_l6,
@@ -1411,17 +1399,3 @@ with tabs[3]:
     components.html(svg, height=760, scrolling=False)
 
     st.markdown("</div>", unsafe_allow_html=True)
-
-    
-    # ======================================
-    # RENDER THE VISUALIZATION
-    # ======================================
-st.markdown("### Visual Treatment Objective")
-
-svg = proposed_movement_svg_two_arch(
-    u_r6, u_r3, u_inc, u_l3, u_l6,
-    l_r6, l_r3, l_inc, l_l3, l_l6,
-)
-components.html(svg, height=760, scrolling=False)
-
-st.markdown("</div>", unsafe_allow_html=True)
