@@ -1325,9 +1325,9 @@ with tabs[3]:
     # RIGHT SIDE
     R_inc = -midline_R
     if has_extraction:
-        # Split extraction space: molar moves OUT (+), canine moves IN (-)
-        R_molar = L_remaining_77_R / 2.0   # Positive (distal/away)
-        R_canine = -L_remaining_77_R / 2.0  # Negative (mesial/toward)
+        # Molar moves OUT (full positive), Canine moves IN (full negative)
+        R_molar = L_remaining_77_R      # Positive (distal/away)
+        R_canine = -L_remaining_77_R    # Negative (mesial/toward)
     else:
         # Crowding: each fixes its own segment
         R_canine = L_remaining_33_R
@@ -1336,9 +1336,9 @@ with tabs[3]:
     # LEFT SIDE
     L_inc = -midline_L
     if has_extraction:
-        # Split extraction space: molar moves OUT (+), canine moves IN (-)
-        L_molar = L_remaining_77_L / 2.0   # Positive (distal/away)
-        L_canine = -L_remaining_77_L / 2.0  # Negative (mesial/toward)
+        # Molar moves OUT (full positive), Canine moves IN (full negative)
+        L_molar = L_remaining_77_L      # Positive (distal/away)
+        L_canine = -L_remaining_77_L    # Negative (mesial/toward)
     else:
         # Crowding: each fixes its own segment
         L_canine = L_remaining_33_L
