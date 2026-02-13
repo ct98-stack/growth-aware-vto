@@ -1293,8 +1293,6 @@ with tabs[3]:
     
     # Get remaining from session state (calculated in Step 2)
     # DOLPHIN LOGIC: Movement = Remaining Discrepancy (no complex allocation)
-    # - Anterior teeth (3, inc) use 3-3 remaining
-    # - Posterior teeth (6) use 7-7 remaining
     
     L_remaining_33_R = float(st.session_state.get("remaining_L_R", 0.0))  # 3-3 R
     L_remaining_33_L = float(st.session_state.get("remaining_L_L", 0.0))  # 3-3 L
@@ -1304,24 +1302,27 @@ with tabs[3]:
     # Get midline for incisor correction
     lower_dental_midline = float(st.session_state.get("lower_dental_midline_mm", 0.0))
     
-    # SIMPLE DOLPHIN LOGIC: Each tooth segment moves by its remaining discrepancy
-    # Upper matches lower to maintain Class I
+    # APPROACH 1: If 7-7 has extraction space (positive), ALL teeth use 7-7 value
+    # This prioritizes extraction mechanics over anterior crowding
+    use_77_for_all_R = L_remaining_77_R > 0
+    use_77_for_all_L = L_remaining_77_L > 0
     
-    # Lower incisors - DIRECT MIDLINE CORRECTION
-    l_inc = -lower_dental_midline
-    
-    # Upper arch (matches lower exactly)
-    u_r6 = L_remaining_77_R  # Molar uses 7-7
-    u_r3 = L_remaining_33_R  # Canine uses 3-3
-    u_l6 = L_remaining_77_L  # Molar uses 7-7
-    u_l3 = L_remaining_33_L  # Canine uses 3-3
-    u_inc = l_inc  # Upper incisors match lower incisors EXACTLY (including midline)
+    # Upper arch (matches lower)
+    u_r6 = L_remaining_77_R  # Molar always uses 7-7
+    u_r3 = L_remaining_77_R if use_77_for_all_R else L_remaining_33_R  # Canine uses 7-7 if extraction
+    u_l6 = L_remaining_77_L  # Molar always uses 7-7
+    u_l3 = L_remaining_77_L if use_77_for_all_L else L_remaining_33_L  # Canine uses 7-7 if extraction
+    u_inc = (u_r3 + u_l3) / 2.0  # Average both sides
 
     # Lower arch
-    l_r6 = L_remaining_77_R  # Molar uses 7-7
-    l_r3 = L_remaining_33_R  # Canine uses 3-3
-    l_l6 = L_remaining_77_L  # Molar uses 7-7
-    l_l3 = L_remaining_33_L  # Canine uses 3-3
+    l_r6 = L_remaining_77_R  # Molar always uses 7-7
+    l_r3 = L_remaining_77_R if use_77_for_all_R else L_remaining_33_R  # Canine uses 7-7 if extraction
+    l_l6 = L_remaining_77_L  # Molar always uses 7-7
+    l_l3 = L_remaining_77_L if use_77_for_all_L else L_remaining_33_L  # Canine uses 7-7 if extraction
+    
+    # Lower incisors - DIRECT MIDLINE CORRECTION
+    # Override with midline correction
+    l_inc = -lower_dental_midline
     
     # Note: We could add the allocation on top of midline correction, but clinically
     # the primary goal is midline correction, so we use it directly
