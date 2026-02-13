@@ -1292,8 +1292,6 @@ with tabs[3]:
     # ======================================
     
     # Get remaining from session state (calculated in Step 2)
-    # DOLPHIN LOGIC: Movement = Remaining Discrepancy (no complex allocation)
-    
     L_remaining_33_R = float(st.session_state.get("remaining_L_R", 0.0))  # 3-3 R
     L_remaining_33_L = float(st.session_state.get("remaining_L_L", 0.0))  # 3-3 L
     L_remaining_77_R = float(st.session_state.get("remaining_77_R", 0.0))  # 7-7 R
@@ -1302,27 +1300,49 @@ with tabs[3]:
     # Get midline for incisor correction
     lower_dental_midline = float(st.session_state.get("lower_dental_midline_mm", 0.0))
     
-    # APPROACH 1: If 7-7 has extraction space (positive), ALL teeth use 7-7 value
-    # This prioritizes extraction mechanics over anterior crowding
-    use_77_for_all_R = L_remaining_77_R > 0
-    use_77_for_all_L = L_remaining_77_L > 0
+    # DOLPHIN LOGIC: Normalize to facial midline FIRST
+    # If midline exists, shift everything to achieve facial coincidence (midline = 0)
+    # Then calculate movements based on the normalized remaining
     
-    # Upper arch (matches lower)
-    u_r6 = L_remaining_77_R  # Molar always uses 7-7
-    u_r3 = L_remaining_77_R if use_77_for_all_R else L_remaining_33_R  # Canine uses 7-7 if extraction
-    u_l6 = L_remaining_77_L  # Molar always uses 7-7
-    u_l3 = L_remaining_77_L if use_77_for_all_L else L_remaining_33_L  # Canine uses 7-7 if extraction
-    u_inc = (u_r3 + u_l3) / 2.0  # Average both sides
-
-    # Lower arch
-    l_r6 = L_remaining_77_R  # Molar always uses 7-7
-    l_r3 = L_remaining_77_R if use_77_for_all_R else L_remaining_33_R  # Canine uses 7-7 if extraction
-    l_l6 = L_remaining_77_L  # Molar always uses 7-7
-    l_l3 = L_remaining_77_L if use_77_for_all_L else L_remaining_33_L  # Canine uses 7-7 if extraction
+    if abs(lower_dental_midline) > 0.05:
+        # MIDLINE PRESENT: Normalize both sides to facial midline
+        # After correcting midline, the remaining values are EQUALIZED
+        # Use the average of both sides after midline correction
+        
+        # The midline correction redistributes space between sides
+        # New remaining after midline correction:
+        normalized_33_R = L_remaining_33_R - lower_dental_midline
+        normalized_33_L = L_remaining_33_L + lower_dental_midline
+        normalized_77_R = L_remaining_77_R - lower_dental_midline  
+        normalized_77_L = L_remaining_77_L + lower_dental_midline
+        
+        # After normalization, use average (both sides should close space equally)
+        avg_33 = (normalized_33_R + normalized_33_L) / 2.0
+        avg_77 = (normalized_77_R + normalized_77_L) / 2.0
+        
+        # All teeth on each side use the averaged value
+        u_r6 = avg_77
+        u_r3 = avg_33
+        u_l6 = avg_77
+        u_l3 = avg_33
+        l_r6 = avg_77
+        l_r3 = avg_33
+        l_l6 = avg_77
+        l_l3 = avg_33
+    else:
+        # NO MIDLINE: Each side independent
+        u_r6 = L_remaining_77_R
+        u_r3 = L_remaining_33_R
+        u_l6 = L_remaining_77_L
+        u_l3 = L_remaining_33_L
+        l_r6 = L_remaining_77_R
+        l_r3 = L_remaining_33_R
+        l_l6 = L_remaining_77_L
+        l_l3 = L_remaining_33_L
     
-    # Lower incisors - DIRECT MIDLINE CORRECTION
-    # Override with midline correction
+    # Incisors ALWAYS use midline correction
     l_inc = -lower_dental_midline
+    u_inc = l_inc
     
     # Note: We could add the allocation on top of midline correction, but clinically
     # the primary goal is midline correction, so we use it directly
