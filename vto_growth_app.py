@@ -1292,6 +1292,8 @@ with tabs[3]:
     # ======================================
     
     # Get remaining from session state (calculated in Step 2)
+    # McLAUGHLIN VTO: Movement = Remaining Discrepancy (1:1 relationship)
+    
     L_remaining_33_R = float(st.session_state.get("remaining_L_R", 0.0))  # 3-3 R
     L_remaining_33_L = float(st.session_state.get("remaining_L_L", 0.0))  # 3-3 L
     L_remaining_77_R = float(st.session_state.get("remaining_77_R", 0.0))  # 7-7 R
@@ -1300,37 +1302,26 @@ with tabs[3]:
     # Get midline for incisor correction
     lower_dental_midline = float(st.session_state.get("lower_dental_midline_mm", 0.0))
     
-    # DOLPHIN LOGIC: Normalize to facial midline FIRST
-    # If midline exists, shift everything to achieve facial coincidence (midline = 0)
-    # Then calculate movements based on the normalized remaining
+    # Check if extraction is present
+    has_extraction = L_remaining_77_R > 0.1 or L_remaining_77_L > 0.1
     
-    if abs(lower_dental_midline) > 0.05:
-        # MIDLINE PRESENT: Normalize both sides to facial midline
-        # After correcting midline, the remaining values are EQUALIZED
-        # Use the average of both sides after midline correction
+    if has_extraction:
+        # EXTRACTION CASE: Use maximum 7-7 value for symmetric closure
+        # This ensures balanced extraction space closure
+        max_77 = max(L_remaining_77_R, L_remaining_77_L)
         
-        # The midline correction redistributes space between sides
-        # New remaining after midline correction:
-        normalized_33_R = L_remaining_33_R - lower_dental_midline
-        normalized_33_L = L_remaining_33_L + lower_dental_midline
-        normalized_77_R = L_remaining_77_R - lower_dental_midline  
-        normalized_77_L = L_remaining_77_L + lower_dental_midline
-        
-        # After normalization, use average (both sides should close space equally)
-        avg_33 = (normalized_33_R + normalized_33_L) / 2.0
-        avg_77 = (normalized_77_R + normalized_77_L) / 2.0
-        
-        # All teeth on each side use the averaged value
-        u_r6 = avg_77
-        u_r3 = avg_33
-        u_l6 = avg_77
-        u_l3 = avg_33
-        l_r6 = avg_77
-        l_r3 = avg_33
-        l_l6 = avg_77
-        l_l3 = avg_33
+        # All teeth use the maximum value for symmetric extraction mechanics
+        u_r6 = max_77
+        u_r3 = max_77
+        u_l6 = max_77
+        u_l3 = max_77
+        l_r6 = max_77
+        l_r3 = max_77
+        l_l6 = max_77
+        l_l3 = max_77
     else:
-        # NO MIDLINE: Each side independent
+        # NON-EXTRACTION CASE: Each segment uses its own remaining value
+        # Molars use 7-7, Canines use 3-3
         u_r6 = L_remaining_77_R
         u_r3 = L_remaining_33_R
         u_l6 = L_remaining_77_L
@@ -1340,7 +1331,8 @@ with tabs[3]:
         l_l6 = L_remaining_77_L
         l_l3 = L_remaining_33_L
     
-    # Incisors ALWAYS use midline correction
+    # Incisors ALWAYS use direct midline correction
+    # This achieves facial midline coincidence
     l_inc = -lower_dental_midline
     u_inc = l_inc
     
