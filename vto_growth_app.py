@@ -1303,60 +1303,70 @@ with tabs[3]:
     # Get midline for incisor correction
     lower_dental_midline = float(st.session_state.get("lower_dental_midline_mm", 0.0))
     
+    # ======================================
+    # McLAUGHLIN VTO CALCULATION
+    # ======================================
+    # Step 1: Start with LOWER ARCH (primary)
+    # Step 2: Calculate UPPER ARCH to achieve Class I
+    
     # Check if extraction is present
     has_extraction = L_remaining_77_R > 0.1 or L_remaining_77_L > 0.1
     
-    # ======================================
-    # McLAUGHLIN LOGIC (Simplified)
-    # ======================================
-    # For each side:
-    # 1. Incisors fix midline
-    # 2. Canines: 
-    #    - If extraction: split the 7-7 space equally with molars (50/50)
-    #    - If crowding: fix 3-3 crowding
+    # LOWER ARCH MOVEMENTS
+    # --------------------
+    # 1. Incisors: Correct midline to 0
+    l_inc = -lower_dental_midline
+    
+    # 2. Canines: Use 3-3 REMAINING
+    #    Negative = move distal (away from midline)
+    #    Positive = move mesial (toward midline)
+    l_r3 = L_remaining_33_R
+    l_l3 = L_remaining_33_L
+    
     # 3. Molars: 
-    #    - If extraction: split the 7-7 space equally with canines (50/50)
-    #    - If crowding: fix 7-7 crowding
-    
-    # Get midline for each side (already calculated in display)
-    midline_R = -lower_dental_midline  # R side uses -midline
-    midline_L = lower_dental_midline   # L side uses +midline
-    
-    # RIGHT SIDE
-    R_inc = -midline_R
     if has_extraction:
-        # Molar moves OUT (full positive), Canine moves IN (full negative)
-        R_molar = L_remaining_77_R      # Positive (distal/away)
-        R_canine = -L_remaining_77_R    # Negative (mesial/toward)
+        # Extraction: Use MAX of 7-7 for symmetric closure
+        max_77 = max(L_remaining_77_R, L_remaining_77_L)
+        l_r6 = max_77
+        l_l6 = max_77
     else:
-        # Crowding: each fixes its own segment
-        R_canine = L_remaining_33_R
-        R_molar = L_remaining_77_R
+        # Non-extraction: Use individual 7-7 values
+        l_r6 = L_remaining_77_R
+        l_l6 = L_remaining_77_L
     
-    # LEFT SIDE
-    L_inc = -midline_L
-    if has_extraction:
-        # Molar moves OUT (full positive), Canine moves IN (full negative)
-        L_molar = L_remaining_77_L      # Positive (distal/away)
-        L_canine = -L_remaining_77_L    # Negative (mesial/toward)
+    # UPPER ARCH MOVEMENTS
+    # --------------------
+    # Upper arch achieves Class I with lower arch
+    
+    # Get initial Class relationship from Step 1
+    initial_r6_class = float(st.session_state.get("r6_mm", 0.0))
+    initial_l6_class = float(st.session_state.get("l6_mm", 0.0))
+    
+    # Calculate Class correction needed
+    # Negative = Class III (upper behind) → need to move forward (positive)
+    # Positive = Class II (upper ahead) → need to move backward (negative)
+    class_correction_r = -initial_r6_class  # Flip sign
+    class_correction_l = -initial_l6_class  # Flip sign
+    
+    # Use average for symmetric correction
+    class_correction = (class_correction_r + class_correction_l) / 2.0
+    
+    # 1. Incisors: No midline correction (upper midline already centered)
+    u_inc = 0.0
+    
+    # 2. Molars: Lower molars + Class correction
+    u_r6 = l_r6 + class_correction
+    u_l6 = l_l6 + class_correction
+    
+    # 3. Canines: 
+    if abs(class_correction) < 0.1:
+        # Class I: Match lower canines
+        u_r3 = l_r3
+        u_l3 = l_l3
     else:
-        # Crowding: each fixes its own segment
-        L_canine = L_remaining_33_L
-        L_molar = L_remaining_77_L
-    
-    # LOWER ARCH
-    l_r6 = R_molar
-    l_r3 = R_canine
-    l_inc = R_inc  # Lower incisors correct LOWER midline
-    l_l3 = L_canine
-    l_l6 = L_molar
-    
-    # UPPER ARCH (matches lower for Class I, but NO midline correction)
-    u_r6 = R_molar
-    u_r3 = R_canine
-    u_inc = 0.0  # Upper incisors DON'T move (upper midline already correct)
-    u_l3 = L_canine
-    u_l6 = L_molar
+        # Class II/III: Use class correction only
+        u_r3 = class_correction
+        u_l3 = class_correction
 
     # ======================================
     # SHOW SUMMARY TABLE
