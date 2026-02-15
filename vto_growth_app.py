@@ -670,7 +670,7 @@ with tabs[0]:
                 "Lower dental midline (mm)", 
                 step=0.1, 
                 key="lower_dental_midline_mm",
-                help="Positive = midline shifted to patient's RIGHT. Negative = shifted to patient's LEFT."
+                help="Positive = midline shifted to patient's LEFT. Negative = shifted to patient's RIGHT."
             )
         with m2:
             st.number_input("Lower skeletal midline (mm)", step=0.1, key="lower_skeletal_midline_mm")
