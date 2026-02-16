@@ -210,8 +210,6 @@ def compute_remaining_dolphin(initial: float, strip: float, expansion: float, di
 def initial_position_svg(
     r6: float,
     l6: float,
-    d: float,
-    s: float,
     upper_midline_mm: float,
     lower_dental_midline_mm: float,
     lower_skeletal_midline_mm: float,
@@ -389,12 +387,6 @@ def initial_position_svg(
 
         <text x="{W-160}" y="78" font-family="Arial" font-size="16" font-weight="700" text-anchor="end">L6</text>
         {box(W-160, 105, f"{l6:.1f}")}
-
-        <text x="{cx-26}" y="{H-110}" font-family="Arial" font-size="16" font-weight="700">D=</text>
-        {box(cx+30, H-115, f"{d:.1f}")}
-
-        <text x="{cx-26}" y="{H-62}" font-family="Arial" font-size="16" font-weight="700">S=</text>
-        {box(cx+30, H-67, f"{s:.1f}")}
 
       </svg>
     </div>
@@ -640,8 +632,6 @@ ss_init("include_growth", True)
 # Step 1: initial positions
 ss_init("r6_init", 0.0)
 ss_init("l6_init", 0.0)
-ss_init("d_init", 0.0)
-ss_init("s_init", 0.0)
 
 # Step 1 midlines
 ss_init("upper_midline_mm", 0.0)
@@ -704,12 +694,6 @@ with tabs[0]:
         with c2:
             st.number_input("L6 (mm)", step=0.1, key="l6_init")
 
-        c3, c4 = st.columns(2)
-        with c3:
-            st.number_input("D (mm)", step=0.1, key="d_init")
-        with c4:
-            st.number_input("S (mm)", step=0.1, key="s_init")
-
         st.markdown('<div class="band-blue">Midlines</div>', unsafe_allow_html=True)
 
         st.number_input("Upper dental midline (mm)", step=0.1, key="upper_midline_mm")
@@ -740,8 +724,6 @@ with tabs[0]:
         svg = initial_position_svg(
             r6=float(st.session_state["r6_init"]),
             l6=float(st.session_state["l6_init"]),
-            d=float(st.session_state["d_init"]),
-            s=float(st.session_state["s_init"]),
             upper_midline_mm=float(st.session_state["upper_midline_mm"]),
             lower_dental_midline_mm=float(st.session_state["lower_dental_midline_mm"]),
             lower_skeletal_midline_mm=float(st.session_state["lower_skeletal_midline_mm"]),
