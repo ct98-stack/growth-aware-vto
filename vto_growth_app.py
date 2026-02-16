@@ -1299,6 +1299,76 @@ with tabs[2]:
 
     st.markdown("</div>", unsafe_allow_html=True)
 
+    # VTO Preview (Lower Arch Only)
+    st.markdown("<hr style='border: none; border-top: 2px solid #ddd; margin: 20px 0;'>", unsafe_allow_html=True)
+    st.markdown("<div style='font-size: 16px; font-weight: 700; margin-bottom: 10px;'>Dental VTO (Preview):</div>", unsafe_allow_html=True)
+
+    # Calculate preview movements (simplified - full calculation in Step 3)
+    lower_dental_midline_preview = float(st.session_state.get("lower_dental_midline_mm", 0.0))
+    l_inc_preview = -lower_dental_midline_preview
+    l_r3_preview = float(st.session_state.get("remaining_L_R", 0.0))
+    l_l3_preview = float(st.session_state.get("remaining_L_L", 0.0))
+    l_r6_preview = float(st.session_state.get("remaining_77_R", 0.0))
+    l_l6_preview = float(st.session_state.get("remaining_77_L", 0.0))
+
+    # Simple SVG preview
+    W_preview = 600
+    H_preview = 200
+    cx_preview = W_preview // 2
+    spacing = 100
+    xs_preview = [cx_preview - 2*spacing, cx_preview - spacing, cx_preview, cx_preview + spacing, cx_preview + 2*spacing]
+    y_tooth_preview = 60
+    y_arrow_preview = 110
+    y_num_preview = 160
+
+    def tooth_preview(x: int, y: int, label: str) -> str:
+        return f"""
+        <circle cx="{x}" cy="{y}" r="20" fill="#e3f2fd" stroke="#1976d2" stroke-width="2"/>
+        <text x="{x}" y="{y + 6}" text-anchor="middle" font-family="Arial" font-size="14" font-weight="700" fill="#111">{label}</text>
+        """
+
+    def arrow_preview(x: int, y: int, v: float, tooth_idx: int) -> str:
+        if abs(v) < 0.1:
+            return ""
+        L = max(20, min(60, abs(v) * 15))
+
+        if tooth_idx == 0:  # R6
+            x1, x2 = (x - 10, x - 10 + L) if v > 0 else (x + 10, x + 10 - L)
+        elif tooth_idx == 1:  # R3
+            x1, x2 = (x - 10, x - 10 + L) if v > 0 else (x + 10, x + 10 - L)
+        elif tooth_idx == 3:  # L3
+            x1, x2 = (x + 10, x + 10 - L) if v > 0 else (x - 10, x - 10 + L)
+        elif tooth_idx == 4:  # L6
+            x1, x2 = (x + 10, x + 10 - L) if v > 0 else (x - 10, x - 10 + L)
+        else:  # Inc
+            x1, x2 = (x + 10, x + 10 - L) if v > 0 else (x - 10, x - 10 + L)
+
+        return f'<line x1="{x1}" y1="{y}" x2="{x2}" y2="{y}" stroke="#1f77b4" stroke-width="4" marker-end="url(#arrowhead_preview)"/>'
+
+    vals_preview = [l_r6_preview, l_r3_preview, l_inc_preview, l_l3_preview, l_l6_preview]
+    labels_preview = ["R6", "R3", "1", "L3", "L6"]
+
+    teeth_preview = "\n".join(tooth_preview(x, y_tooth_preview, lab) for x, lab in zip(xs_preview, labels_preview))
+    arrows_preview = "\n".join(arrow_preview(x, y_arrow_preview, v, i) for i, (x, v) in enumerate(zip(xs_preview, vals_preview)))
+    nums_preview = "\n".join(f'<text x="{x}" y="{y_num_preview}" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#111">{v:+.1f}</text>'
+                              for x, v in zip(xs_preview, vals_preview))
+
+    svg_preview = f"""
+    <svg width="100%" viewBox="0 0 {W_preview} {H_preview}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrowhead_preview" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+          <path d="M0,0 L0,8 L8,4 z" fill="#1f77b4"/>
+        </marker>
+      </defs>
+      <line x1="80" y1="30" x2="{W_preview-80}" y2="30" stroke="#222" stroke-width="3"/>
+      {teeth_preview}
+      {arrows_preview}
+      {nums_preview}
+    </svg>
+    """
+
+    st.markdown(svg_preview, unsafe_allow_html=True)
+
 
 # =========================================================
 # STEP 3
