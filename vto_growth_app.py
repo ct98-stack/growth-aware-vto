@@ -1208,14 +1208,14 @@ with tabs[2]:
     with col5:
         st.number_input("", step=0.1, key="exp_77_L", label_visibility="collapsed")
 
-    # Distalizing 6-6 - Compact
+    # Distalizing 6-6 - Compact (7-7 only, doesn't affect canines)
     col1, col2, col3, col_sep, col4, col5 = st.columns([1.8, 0.5, 0.5, 0.15, 0.5, 0.5])
     with col1:
         st.markdown("<div style='font-size: 13px; font-weight: 600; padding: 6px 0;'>Distalizing 6-6</div>", unsafe_allow_html=True)
     with col2:
-        st.number_input("", step=0.1, key="dist_33_R", label_visibility="collapsed")
+        st.markdown("<div style='text-align: center; padding: 4px; font-size: 13px; color: #999;'>—</div>", unsafe_allow_html=True)
     with col3:
-        st.number_input("", step=0.1, key="dist_33_L", label_visibility="collapsed")
+        st.markdown("<div style='text-align: center; padding: 4px; font-size: 13px; color: #999;'>—</div>", unsafe_allow_html=True)
     with col_sep:
         st.markdown("<div style='border-left: 2px solid #666; height: 32px; margin: 0 auto;'></div>", unsafe_allow_html=True)
     with col4:
@@ -1241,15 +1241,14 @@ with tabs[2]:
     st.markdown("</div>", unsafe_allow_html=True)
     
     # Calculate Total Gained and Remaining
-    gained_33_R = (float(st.session_state["strip_33_R"]) + 
-                   float(st.session_state["exp_33_R"]) + 
-                   float(st.session_state["dist_33_R"]) + 
-                   float(st.session_state["ext_33_R"]) + 
+    # Note: Distalizing 6-6 does NOT affect 3-3 (canines), only 7-7 (molars)
+    gained_33_R = (float(st.session_state["strip_33_R"]) +
+                   float(st.session_state["exp_33_R"]) +
+                   float(st.session_state["ext_33_R"]) +
                    growth_L_33)
-    gained_33_L = (float(st.session_state["strip_33_L"]) + 
-                   float(st.session_state["exp_33_L"]) + 
-                   float(st.session_state["dist_33_L"]) + 
-                   float(st.session_state["ext_33_L"]) + 
+    gained_33_L = (float(st.session_state["strip_33_L"]) +
+                   float(st.session_state["exp_33_L"]) +
+                   float(st.session_state["ext_33_L"]) +
                    growth_L_33)
     gained_77_R = (float(st.session_state["strip_77_R"]) + 
                    float(st.session_state["exp_77_R"]) + 
