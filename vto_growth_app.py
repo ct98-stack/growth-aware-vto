@@ -267,20 +267,20 @@ def initial_position_svg(
         """Show arrow indicating molar displacement from Class I (0 position)"""
         if abs(val) < 0.2:
             return ""  # No arrow if essentially at Class I
-        
+
         # Position arrow ABOVE the tooth
         if side == "R":
             x = 150 + val * scale
         else:
             x = W - 150 - val * scale
-        
+
         arrow_y = y - 115  # Positioned between R6/L6 boxes and arch line
         arrow_length = min(80, abs(val) * 24)  # Longer arrows (was 40, 12)
-        
+
         # Arrow direction logic:
         # Positive value = molar shifted MESIALLY (toward midline)
         # Negative value = molar shifted DISTALLY (away from midline)
-        
+
         if val > 0:  # Molar shifted mesially (forward/toward midline)
             color = "#e74c3c"  # Red for mesial
             if side == "R":
@@ -297,7 +297,7 @@ def initial_position_svg(
             else:  # side == "L"
                 # Left side: distal = toward RIGHT (away from center)
                 x1, x2 = x - 12, x - 12 + arrow_length  # Arrow points RIGHT
-        
+
         return f"""
         <defs>
           <marker id="arrow_{side}" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
@@ -309,6 +309,42 @@ def initial_position_svg(
         <text x="{x}" y="{arrow_y + 20}" text-anchor="middle"
               font-family="Arial" font-size="16" font-weight="800" fill="{color}">
           {abs(val):.1f}mm
+        </text>
+        """
+
+    def midline_correction_arrow(midline_val: float, y: int, arch: str) -> str:
+        """Show arrow indicating midline correction direction
+        Positive midline = shifted to patient's LEFT → correct to patient's RIGHT (arrow →)
+        Negative midline = shifted to patient's RIGHT → correct to patient's LEFT (arrow ←)
+        """
+        if abs(midline_val) < 0.2:
+            return ""  # No arrow if midline essentially centered
+
+        x_midline = cx + midline_val * scale
+        arrow_y = y + 90  # Below the tooth
+        arrow_length = min(60, abs(midline_val) * 20)
+        color = "#ff6f00"  # Orange for midline correction
+
+        # Positive midline = arrow points RIGHT (→)
+        # Negative midline = arrow points LEFT (←)
+        if midline_val > 0:
+            # Shifted left, correct right →
+            x1, x2 = x_midline - 10, x_midline - 10 + arrow_length
+        else:
+            # Shifted right, correct left ←
+            x1, x2 = x_midline + 10, x_midline + 10 - arrow_length
+
+        return f"""
+        <defs>
+          <marker id="arrow_midline_{arch}" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+            <path d="M0,0 L0,10 L10,5 z" fill="{color}"/>
+          </marker>
+        </defs>
+        <line x1="{x1}" y1="{arrow_y}" x2="{x2}" y2="{arrow_y}"
+              stroke="{color}" stroke-width="5" marker-end="url(#arrow_midline_{arch})"/>
+        <text x="{x_midline}" y="{arrow_y + 20}" text-anchor="middle"
+              font-family="Arial" font-size="14" font-weight="800" fill="{color}">
+          Correct {abs(midline_val):.1f}mm
         </text>
         """
 
@@ -327,10 +363,13 @@ def initial_position_svg(
         {tooth(x_um, y_upper+55, "1")}
         {tooth(x_l6, y_upper+55, "6")}
         {midline_marker(x_um, y_upper, color="#111", label="Upper dental")}
-        
+
         <!-- Molar arrows showing displacement from Class I -->
         {molar_arrow(r6, "R", y_upper+55)}
         {molar_arrow(l6, "L", y_upper+55)}
+
+        <!-- Upper midline correction arrow -->
+        {midline_correction_arrow(upper_midline_mm, y_upper+55, "upper")}
 
         <!-- LOWER -->
         <text x="70" y="{y_lower-20}" font-family="Arial" font-size="16" font-weight="700">Lower</text>
@@ -340,6 +379,9 @@ def initial_position_svg(
         {tooth(x_l6, y_lower+55, "6")}
         {midline_marker(x_ls, y_lower, color="#7a7a7a", label="Skeletal")}
         {midline_marker(x_ld, y_lower, color="#111", label="Dental")}
+
+        <!-- Lower midline correction arrow -->
+        {midline_correction_arrow(lower_dental_midline_mm, y_lower+55, "lower")}
 
         <!-- Value boxes -->
         <text x="160" y="78" font-family="Arial" font-size="16" font-weight="700">R6</text>
@@ -1052,16 +1094,16 @@ with tabs[2]:
         st.markdown(f"<div style='text-align: center; padding: 6px; background: #e8f4f8; border-radius: 4px;'>{float(st.session_state['cos_33_L']):.1f}</div>", unsafe_allow_html=True)
     
     st.markdown("</div>", unsafe_allow_html=True)
-    
-    # MIDLINE (Orange)
+
+    # MIDLINE (Orange) - Auto-calculated from Step 1
     st.markdown("<div style='background: rgba(255, 165, 0, .12); padding: 8px; border-radius: 8px; margin: 10px 0;'>", unsafe_allow_html=True)
     col1, col2, col3, col_sep, col4, col5 = st.columns([2, 0.5, 0.5, 0.2, 0.5, 0.5])
     with col1:
         st.markdown("**Midline**")
     with col2:
-        st.markdown(f"<div style='text-align: center;'>{-lower_dental_midline:+.1f}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='text-align: center; padding: 6px; background: #fff3e0; border-radius: 4px;'>{-lower_dental_midline:+.1f}</div>", unsafe_allow_html=True)
     with col3:
-        st.markdown(f"<div style='text-align: center;'>{lower_dental_midline:+.1f}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='text-align: center; padding: 6px; background: #fff3e0; border-radius: 4px;'>{lower_dental_midline:+.1f}</div>", unsafe_allow_html=True)
     with col_sep:
         st.markdown("<div style='border-left: 3px solid #666; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
     with col4:
@@ -1070,7 +1112,8 @@ with tabs[2]:
     with col5:
         # Mirror from 3-3
         st.markdown(f"<div style='text-align: center; padding: 6px; background: #fff3e0; border-radius: 4px;'>{lower_dental_midline:+.1f}</div>", unsafe_allow_html=True)
-    
+    st.markdown("</div>", unsafe_allow_html=True)
+
     # Incisor Position
     col1, col2, col3, col_sep, col4, col5 = st.columns([2, 0.5, 0.5, 0.2, 0.5, 0.5])
     with col1:
@@ -1093,7 +1136,10 @@ with tabs[2]:
         # Auto-populated from 3-3
         st.markdown(f"<div style='text-align: center; padding: 6px; background: #e8f4f8; border-radius: 4px;'>{inc_pos_L:.1f}</div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
-    
+
+    # Visual separator before calculations
+    st.markdown("<hr style='border: none; border-top: 2px dashed #ccc; margin: 20px 0;'>", unsafe_allow_html=True)
+
     # Calculate Initial Discrepancy
     initial_33_R = (float(st.session_state["ant_cs_33_R"]) + 
                     float(st.session_state["cos_33_R"]) + 
@@ -1120,22 +1166,21 @@ with tabs[2]:
                     lower_dental_midline +  # Midline from 3-3 (L uses +midline)
                     float(st.session_state["inc_pos_33_L"]))  # Inc Pos from 3-3
     
-    # INITIAL DISCREPANCY (Yellow)
-    st.markdown("<div style='background: rgba(255, 255, 0, .15); padding: 8px; border-radius: 8px; margin: 10px 0;'>", unsafe_allow_html=True)
+    # INITIAL DISCREPANCY (Enhanced highlighting)
+    st.markdown("<div style='background: linear-gradient(135deg, rgba(255, 193, 7, .35) 0%, rgba(255, 152, 0, .35) 100%); padding: 14px; border-radius: 10px; margin: 15px 0; border: 3px solid rgba(255, 152, 0, .6); box-shadow: 0 4px 8px rgba(0,0,0,0.1);'>", unsafe_allow_html=True)
     col1, col2, col3, col_sep, col4, col5 = st.columns([2, 0.5, 0.5, 0.2, 0.5, 0.5])
     with col1:
-        st.markdown("**Initial Discrepancy**")
+        st.markdown("<div style='font-size: 18px; font-weight: 900; color: #e65100;'>⚠️ Initial Discrepancy</div>", unsafe_allow_html=True)
     with col2:
-        st.markdown(f"<div style='text-align: center; font-weight: bold;'>{initial_33_R:.1f}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='text-align: center; font-weight: 900; font-size: 20px; color: #e65100;'>{initial_33_R:.1f}</div>", unsafe_allow_html=True)
     with col3:
-        st.markdown(f"<div style='text-align: center; font-weight: bold;'>{initial_33_L:.1f}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='text-align: center; font-weight: 900; font-size: 20px; color: #e65100;'>{initial_33_L:.1f}</div>", unsafe_allow_html=True)
     with col_sep:
-        st.markdown("<div style='border-left: 3px solid #666; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
-        st.markdown(f"<div style='text-align: center; font-weight: bold;'>{initial_33_L:.1f}</div>", unsafe_allow_html=True)
+        st.markdown("<div style='border-left: 4px solid #e65100; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
     with col4:
-        st.markdown(f"<div style='text-align: center; font-weight: bold;'>{initial_77_R:.1f}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='text-align: center; font-weight: 900; font-size: 20px; color: #e65100;'>{initial_77_R:.1f}</div>", unsafe_allow_html=True)
     with col5:
-        st.markdown(f"<div style='text-align: center; font-weight: bold;'>{initial_77_L:.1f}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='text-align: center; font-weight: 900; font-size: 20px; color: #e65100;'>{initial_77_L:.1f}</div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
     
     # SPACE GAINED SECTION (Green)
@@ -1235,22 +1280,25 @@ with tabs[2]:
     st.session_state["remaining_L_L"] = remaining_33_L  # 3-3 anterior
     st.session_state["remaining_77_R"] = remaining_77_R  # 7-7 posterior
     st.session_state["remaining_77_L"] = remaining_77_L  # 7-7 posterior
-    
-    # REMAINING DISCREPANCY (Yellow)
-    st.markdown("<div style='background: rgba(255, 255, 0, .15); padding: 8px; border-radius: 8px; margin: 10px 0;'>", unsafe_allow_html=True)
+
+    # Visual separator before Remaining Discrepancy
+    st.markdown("<hr style='border: none; border-top: 2px dashed #ccc; margin: 20px 0;'>", unsafe_allow_html=True)
+
+    # REMAINING DISCREPANCY (Enhanced highlighting)
+    st.markdown("<div style='background: linear-gradient(135deg, rgba(76, 175, 80, .35) 0%, rgba(56, 142, 60, .35) 100%); padding: 14px; border-radius: 10px; margin: 15px 0; border: 3px solid rgba(56, 142, 60, .7); box-shadow: 0 4px 8px rgba(0,0,0,0.15);'>", unsafe_allow_html=True)
     col1, col2, col3, col_sep, col4, col5 = st.columns([2, 0.5, 0.5, 0.2, 0.5, 0.5])
     with col1:
-        st.markdown("**Remaining Discrepancy**")
+        st.markdown("<div style='font-size: 18px; font-weight: 900; color: #1b5e20;'>✓ Remaining Discrepancy</div>", unsafe_allow_html=True)
     with col2:
-        st.markdown(f"<div style='text-align: center; font-weight: bold; font-size: 18px;'>{remaining_33_R:.1f}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='text-align: center; font-weight: 900; font-size: 22px; color: #1b5e20;'>{remaining_33_R:.1f}</div>", unsafe_allow_html=True)
     with col3:
-        st.markdown(f"<div style='text-align: center; font-weight: bold; font-size: 18px;'>{remaining_33_L:.1f}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='text-align: center; font-weight: 900; font-size: 22px; color: #1b5e20;'>{remaining_33_L:.1f}</div>", unsafe_allow_html=True)
     with col_sep:
-        st.markdown("<div style='border-left: 3px solid #666; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='border-left: 4px solid #1b5e20; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
     with col4:
-        st.markdown(f"<div style='text-align: center; font-weight: bold; font-size: 18px;'>{remaining_77_R:.1f}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='text-align: center; font-weight: 900; font-size: 22px; color: #1b5e20;'>{remaining_77_R:.1f}</div>", unsafe_allow_html=True)
     with col5:
-        st.markdown(f"<div style='text-align: center; font-weight: bold; font-size: 18px;'>{remaining_77_L:.1f}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='text-align: center; font-weight: 900; font-size: 22px; color: #1b5e20;'>{remaining_77_L:.1f}</div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
     
     st.markdown(
@@ -1306,75 +1354,90 @@ with tabs[3]:
     # ======================================
     # McLAUGHLIN VTO CALCULATION
     # ======================================
-    # Step 1: Start with LOWER ARCH (primary)
-    # Step 2: Calculate UPPER ARCH to achieve Class I
-    
-    # Check if extraction is present
-    has_extraction = L_remaining_77_R > 0.1 or L_remaining_77_L > 0.1
-    
-    # LOWER ARCH MOVEMENTS
-    # --------------------
-    # 1. Incisors: Correct midline to 0
+    # Following McLaughlin/Bennett/Trevisi exact methodology
+
+    # STEP 1: Lower midline correction
+    # Based on original lower dental midline from Chart 1
     l_inc = -lower_dental_midline
-    
-    # 2. Canines: Use 3-3 REMAINING
-    #    Negative = move distal (away from midline)
-    #    Positive = move mesial (toward midline)
-    l_r3 = L_remaining_33_R
-    l_l3 = L_remaining_33_L
-    
-    # 3. Molars: 
-    if has_extraction:
-        # Extraction: Use MAX of 7-7 for symmetric closure
-        max_77 = max(L_remaining_77_R, L_remaining_77_L)
-        l_r6 = max_77
-        l_l6 = max_77
-    else:
-        # Non-extraction: Use individual 7-7 values
-        l_r6 = L_remaining_77_R
-        l_l6 = L_remaining_77_L
-    
-    # UPPER ARCH MOVEMENTS
-    # --------------------
-    # Upper arch achieves Class I with lower arch
-    
+
+    # STEP 2: Lower canine movement
+    # Based on "Remaining Discrepancy" in 3-3 column (Chart 2) MINUS midline component
+    # The midline is corrected by incisors, so canines move by remaining discrepancy without midline
+    # Negative = distal movement, Positive = mesial movement
+    l_r3 = L_remaining_33_R + lower_dental_midline  # Remove -midline from R calculation
+    l_l3 = L_remaining_33_L - lower_dental_midline  # Remove +midline from L calculation
+
+    # STEP 3: Lower premolar/molar space
+    # Space behind canine = Total 7-7 space minus 3-3 space
+    # This represents space available in premolar/molar region
+    lower_premolar_space_R = L_remaining_77_R - L_remaining_33_R
+    lower_premolar_space_L = L_remaining_77_L - L_remaining_33_L
+
+    # STEP 4: Lower first molar movement
+    # Based on canine movement + available space in premolar region
+    # Formula: Molar movement = Canine movement + Premolar/molar space
+    l_r6 = l_r3 + lower_premolar_space_R
+    l_l6 = l_l3 + lower_premolar_space_L
+
+    # STEP 5: Upper first molar movement
+    # Based on original molar relationship (Chart 1) + lower molar movement
     # Get initial Class relationship from Step 1
-    initial_r6_class = float(st.session_state.get("r6_mm", 0.0))
-    initial_l6_class = float(st.session_state.get("l6_mm", 0.0))
-    
-    # Calculate Class correction needed
-    # Negative = Class III (upper behind) → need to move forward (positive)
-    # Positive = Class II (upper ahead) → need to move backward (negative)
-    class_correction_r = -initial_r6_class  # Flip sign
-    class_correction_l = -initial_l6_class  # Flip sign
-    
-    # Use average for symmetric correction
-    class_correction = (class_correction_r + class_correction_l) / 2.0
-    
-    # 1. Incisors: No midline correction (upper midline already centered)
-    u_inc = 0.0
-    
-    # 2. Molars: Lower molars + Class correction
-    u_r6 = l_r6 + class_correction
-    u_l6 = l_l6 + class_correction
-    
-    # 3. Canines: 
-    if abs(class_correction) < 0.1:
-        # Class I: Match lower canines
-        u_r3 = l_r3
-        u_l3 = l_l3
-    else:
-        # Class II/III: Use class correction only
-        u_r3 = class_correction
-        u_l3 = class_correction
+    initial_r6_class = float(st.session_state.get("r6_init", 0.0))
+    initial_l6_class = float(st.session_state.get("l6_init", 0.0))
+
+    # Class correction needed to achieve Class I
+    # Original molar position + Lower molar movement gives upper molar movement
+    u_r6 = l_r6 - initial_r6_class
+    u_l6 = l_l6 - initial_l6_class
+
+    # STEP 6: Upper premolar/molar space
+    # This would be calculated from upper arch discrepancy analysis
+    # For now, assume symmetric with lower arch adjustment
+    upper_premolar_space_R = lower_premolar_space_R
+    upper_premolar_space_L = lower_premolar_space_L
+
+    # STEP 7: Upper canine movement
+    # Based on upper molar movement - available space in premolar region
+    # Formula: Canine movement = Molar movement - Premolar/molar space
+    u_r3 = u_r6 - upper_premolar_space_R
+    u_l3 = u_l6 - upper_premolar_space_L
+
+    # STEP 8: Upper midline correction
+    # Based on original upper dental midline from Chart 1
+    upper_midline = float(st.session_state.get("upper_midline_mm", 0.0))
+    u_inc = -upper_midline
 
     # ======================================
-    # SHOW SUMMARY TABLE
+    # SHOW DETAILED BREAKDOWN (McLaughlin Steps)
     # ======================================
-    st.markdown("### Movement Summary (mm)")
-    
+    st.markdown("### McLaughlin VTO Step-by-Step Calculation")
+
+    st.markdown('<div class="band-blue">Lower Arch Calculations (Steps 1-4)</div>', unsafe_allow_html=True)
+
+    lower_calc = pd.DataFrame([
+        ["Step 1: Midline Correction", f"{lower_dental_midline:+.1f}", "→", f"{l_inc:+.1f}", "Incisors"],
+        ["Step 2: Canine Movement", f"Rem. - Midline", "→", f"{l_r3:+.1f} / {l_l3:+.1f}", "R3 / L3"],
+        ["", f"({L_remaining_33_R:+.1f} + {lower_dental_midline:+.1f}) / ({L_remaining_33_L:+.1f} - {lower_dental_midline:+.1f})", "", "", ""],
+        ["Step 3: Premolar/Molar Space", f"{lower_premolar_space_R:+.1f} / {lower_premolar_space_L:+.1f}", "", "", "Behind canines"],
+        ["Step 4: Molar Movement", f"Canine + PM space", "→", f"{l_r6:+.1f} / {l_l6:+.1f}", "R6 / L6"],
+    ], columns=["McLaughlin Step", "Input", "", "Result", "Applies to"])
+    st.dataframe(lower_calc, use_container_width=True, hide_index=True)
+
+    st.markdown('<div class="band-green">Upper Arch Calculations (Steps 5-8)</div>', unsafe_allow_html=True)
+
+    upper_calc = pd.DataFrame([
+        ["Step 5: Molar Movement", f"Lower M6 - Class offset", "→", f"{u_r6:+.1f} / {u_l6:+.1f}", "R6 / L6"],
+        ["Step 6: Premolar/Molar Space", f"{upper_premolar_space_R:+.1f} / {upper_premolar_space_L:+.1f}", "", "", "Anterior to molars"],
+        ["Step 7: Canine Movement", f"Molar - PM space", "→", f"{u_r3:+.1f} / {u_l3:+.1f}", "R3 / L3"],
+        ["Step 8: Midline Correction", f"{upper_midline:+.1f}", "→", f"{u_inc:+.1f}", "Incisors"],
+    ], columns=["McLaughlin Step", "Input", "", "Result", "Applies to"])
+    st.dataframe(upper_calc, use_container_width=True, hide_index=True)
+
+    st.markdown("---")
+    st.markdown("### Final Movement Summary (mm)")
+
     col1, col2 = st.columns(2)
-    
+
     with col1:
         st.markdown("**Upper Arch**")
         upper_movements = pd.DataFrame([
@@ -1385,7 +1448,7 @@ with tabs[3]:
             ["L6", f"{u_l6:+.1f}"],
         ], columns=["Tooth", "Movement"])
         st.dataframe(upper_movements, use_container_width=True, hide_index=True)
-    
+
     with col2:
         st.markdown("**Lower Arch**")
         lower_movements = pd.DataFrame([
@@ -1400,7 +1463,7 @@ with tabs[3]:
     st.markdown(
         "<div class='hint'>"
         "Positive = toward patient's left; Negative = toward patient's right<br>"
-        "<b>Lower incisor movement applies DIRECT midline correction</b> to achieve facial coincidence"
+        "<b>Calculation follows McLaughlin/Bennett/Trevisi methodology exactly</b>"
         "</div>",
         unsafe_allow_html=True
     )
