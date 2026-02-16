@@ -1250,15 +1250,15 @@ with tabs[2]:
                    float(st.session_state["exp_33_L"]) +
                    float(st.session_state["ext_33_L"]) +
                    growth_L_33)
-    # Distalization moves molars DISTAL (negative direction), so subtract it from gained
+    # For Step 2 table display: distalization adds to gained space (shown as positive)
     gained_77_R = (float(st.session_state["strip_77_R"]) +
-                   float(st.session_state["exp_77_R"]) -
-                   float(st.session_state["dist_77_R"]) +  # Subtract: distal movement
+                   float(st.session_state["exp_77_R"]) +
+                   float(st.session_state["dist_77_R"]) +  # Add for table display
                    float(st.session_state["ext_77_R"]) +
                    growth_L_77)
     gained_77_L = (float(st.session_state["strip_77_L"]) +
-                   float(st.session_state["exp_77_L"]) -
-                   float(st.session_state["dist_77_L"]) +  # Subtract: distal movement
+                   float(st.session_state["exp_77_L"]) +
+                   float(st.session_state["dist_77_L"]) +  # Add for table display
                    float(st.session_state["ext_77_L"]) +
                    growth_L_77)
     
@@ -1270,9 +1270,14 @@ with tabs[2]:
     # Store in session state for Step 3
     st.session_state["remaining_L_R"] = remaining_33_R  # 3-3 anterior
     st.session_state["remaining_L_L"] = remaining_33_L  # 3-3 anterior
-    # For 7-7: exclude C/S Molars from movement (C/S Molars affects discrepancy but not tooth movement)
-    st.session_state["remaining_77_R"] = remaining_77_R - float(st.session_state["cos_molar_77_R"])
-    st.session_state["remaining_77_L"] = remaining_77_L - float(st.session_state["cos_molar_77_L"])
+    # For 7-7: exclude C/S Molars from movement, and apply distalization as distal movement
+    # Subtract dist twice: once to reverse the +dist above, once to apply distal movement
+    st.session_state["remaining_77_R"] = (remaining_77_R -
+                                          float(st.session_state["cos_molar_77_R"]) -
+                                          (2 * float(st.session_state["dist_77_R"])))
+    st.session_state["remaining_77_L"] = (remaining_77_L -
+                                          float(st.session_state["cos_molar_77_L"]) -
+                                          (2 * float(st.session_state["dist_77_L"])))
 
     # Visual separator before Remaining Discrepancy - Compact
     st.markdown("<hr style='border: none; border-top: 1px dashed #ccc; margin: 12px 0;'>", unsafe_allow_html=True)
