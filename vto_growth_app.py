@@ -1367,7 +1367,7 @@ with tabs[2]:
     </svg>
     """
 
-    st.markdown(svg_preview, unsafe_allow_html=True)
+    components.html(svg_preview, height=210, scrolling=False)
 
 
 # =========================================================
