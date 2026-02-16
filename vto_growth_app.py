@@ -1336,6 +1336,27 @@ with tabs[3]:
 
     st.markdown("<hr/>", unsafe_allow_html=True)
 
+    # Upper Extraction inputs
+    st.markdown('<div class="band-purple">Upper Arch Extraction Space</div>', unsafe_allow_html=True)
+    st.markdown(
+        "<div class='band-gray'>"
+        "Enter extraction space for upper arch (e.g., 7.0 mm for first premolar extraction)"
+        "</div>",
+        unsafe_allow_html=True
+    )
+
+    # Initialize session state
+    ss_init("upper_extraction_R", 0.0)
+    ss_init("upper_extraction_L", 0.0)
+
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col1:
+        st.number_input("Right Upper Extraction (mm)", step=0.1, key="upper_extraction_R", min_value=0.0)
+    with col2:
+        st.number_input("Left Upper Extraction (mm)", step=0.1, key="upper_extraction_L", min_value=0.0)
+
+    st.markdown("<hr/>", unsafe_allow_html=True)
+
     # ======================================
     # CALCULATE MOVEMENTS FROM REMAINING
     # ======================================
@@ -1392,10 +1413,13 @@ with tabs[3]:
     u_l6 = l_l6 - initial_l6_class
 
     # STEP 6: Upper premolar/molar space
-    # This would be calculated from upper arch discrepancy analysis
-    # For now, assume symmetric with lower arch adjustment
-    upper_premolar_space_R = lower_premolar_space_R
-    upper_premolar_space_L = lower_premolar_space_L
+    # Get upper extraction values from user input in Step 3
+    upper_extraction_R = float(st.session_state.get("upper_extraction_R", 0.0))
+    upper_extraction_L = float(st.session_state.get("upper_extraction_L", 0.0))
+
+    # Upper premolar space = extraction space (space between canine and molar)
+    upper_premolar_space_R = upper_extraction_R
+    upper_premolar_space_L = upper_extraction_L
 
     # STEP 7: Upper canine movement
     # When upper premolar space is positive (extraction case):
