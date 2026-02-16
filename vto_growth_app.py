@@ -1204,10 +1204,19 @@ with tabs[2]:
         st.number_input("", step=0.1, key="strip_33_L", label_visibility="collapsed")
     with col_sep:
         st.markdown("<div style='border-left: 3px solid #666; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
+
+    # Read 3-3 values and auto-populate to 7-7
+    strip_33_R = float(st.session_state.get('strip_33_R', 0.0))
+    strip_33_L = float(st.session_state.get('strip_33_L', 0.0))
+
+    # Store mirrored values in session state for calculations
+    st.session_state["strip_77_R"] = strip_33_R
+    st.session_state["strip_77_L"] = strip_33_L
+
     with col4:
-        st.number_input("", step=0.1, key="strip_77_R", label_visibility="collapsed")
+        st.markdown(f"<div style='text-align: center; padding: 6px; background: #e8f5e9; border-radius: 4px;'>{strip_33_R:.1f}</div>", unsafe_allow_html=True)
     with col5:
-        st.number_input("", step=0.1, key="strip_77_L", label_visibility="collapsed")
+        st.markdown(f"<div style='text-align: center; padding: 6px; background: #e8f5e9; border-radius: 4px;'>{strip_33_L:.1f}</div>", unsafe_allow_html=True)
     
     # Expansion
     col1, col2, col3, col_sep, col4, col5 = st.columns([2, 0.5, 0.5, 0.2, 0.5, 0.5])
