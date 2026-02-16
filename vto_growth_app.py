@@ -312,8 +312,8 @@ def initial_position_svg(
 
     def midline_correction_arrow(midline_val: float, y: int, arch: str) -> str:
         """Show arrow indicating midline correction direction
-        Positive midline = correct to patient's RIGHT (arrow →)
-        Negative midline = correct to patient's LEFT (arrow ←)
+        Positive midline = arrow points LEFT on screen (patient's RIGHT)
+        Negative midline = arrow points RIGHT on screen (patient's LEFT)
         """
         if abs(midline_val) < 0.2:
             return ""  # No arrow if midline essentially centered
@@ -323,14 +323,14 @@ def initial_position_svg(
         arrow_length = min(60, abs(midline_val) * 20)
         color = "#ff6f00"  # Orange for midline correction
 
-        # Positive midline = arrow points RIGHT (→)
-        # Negative midline = arrow points LEFT (←)
+        # Positive midline = arrow points LEFT on screen (patient's RIGHT)
+        # Negative midline = arrow points RIGHT on screen (patient's LEFT)
         if midline_val > 0:
-            # Correct to patient's right →
-            x1, x2 = x_midline - 10, x_midline - 10 + arrow_length
-        else:
-            # Correct to patient's left ←
+            # Arrow points left ←
             x1, x2 = x_midline + 10, x_midline + 10 - arrow_length
+        else:
+            # Arrow points right →
+            x1, x2 = x_midline - 10, x_midline - 10 + arrow_length
 
         return f"""
         <defs>
@@ -1250,15 +1250,16 @@ with tabs[2]:
                    float(st.session_state["exp_33_L"]) +
                    float(st.session_state["ext_33_L"]) +
                    growth_L_33)
-    gained_77_R = (float(st.session_state["strip_77_R"]) + 
-                   float(st.session_state["exp_77_R"]) + 
-                   float(st.session_state["dist_77_R"]) + 
-                   float(st.session_state["ext_77_R"]) + 
+    # Distalization moves molars DISTAL (negative direction), so subtract it from gained
+    gained_77_R = (float(st.session_state["strip_77_R"]) +
+                   float(st.session_state["exp_77_R"]) -
+                   float(st.session_state["dist_77_R"]) +  # Subtract: distal movement
+                   float(st.session_state["ext_77_R"]) +
                    growth_L_77)
-    gained_77_L = (float(st.session_state["strip_77_L"]) + 
-                   float(st.session_state["exp_77_L"]) + 
-                   float(st.session_state["dist_77_L"]) + 
-                   float(st.session_state["ext_77_L"]) + 
+    gained_77_L = (float(st.session_state["strip_77_L"]) +
+                   float(st.session_state["exp_77_L"]) -
+                   float(st.session_state["dist_77_L"]) +  # Subtract: distal movement
+                   float(st.session_state["ext_77_L"]) +
                    growth_L_77)
     
     remaining_33_R = initial_33_R + gained_33_R
