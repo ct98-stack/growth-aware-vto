@@ -455,44 +455,52 @@ def proposed_movement_svg_two_arch(
     def arrow(x: int, y: int, v: float, tooth_idx: int) -> str:
         """
         tooth_idx: 0=R6, 1=R3, 2=Inc, 3=L3, 4=L6
-        
-        Extraction mechanics:
-        - Extraction space is between canine (3) and molar (6) 
-        - Both canine and molar move TOWARD the extraction space
-        - R6 moves RIGHT (mesially), R3 moves LEFT (distally) → converge
-        - L6 moves LEFT (mesially), L3 moves RIGHT (distally) → converge
-        
-        Crowding mechanics:
-        - Teeth expand away from each other
+
+        Arrow direction follows value sign:
+        - Positive value = MESIAL movement (toward front)
+        - Negative value = DISTAL movement (toward back)
+
+        The calculation (e.g., u_r3 = -u_r6 for extraction) already handles
+        the direction, so arrows simply visualize the value's sign.
         """
         v = clean(v)
         # Don't show arrow if movement is essentially zero
         if abs(v) < 0.05:
             return ""
-        
+
         L = max(22, min(70, abs(v) * 18))
-        
-        # Arrow direction based on tooth type and biomechanics
+
+        # All teeth follow same logic: arrow direction matches value sign
+        # Positive = mesial, Negative = distal
+
         if tooth_idx == 0:  # R6 (right molar)
-            if v > 0:  # Extraction/spacing
-                x1, x2 = x - 10, x - 10 + L  # Points RIGHT → (toward extraction)
-            else:  # Crowding
-                x1, x2 = x + 10, x + 10 - L  # Points LEFT ←
-        elif tooth_idx == 1:  # R3 (right canine)
-            if v > 0:  # Extraction/spacing
-                x1, x2 = x + 10, x + 10 - L  # Points LEFT ← (toward extraction)
-            else:  # Crowding
-                x1, x2 = x + 10, x + 10 - L  # Points LEFT ← (expand away from midline)
-        elif tooth_idx == 3:  # L3 (left canine)
-            if v > 0:  # Extraction/spacing
-                x1, x2 = x - 10, x - 10 + L  # Points RIGHT → (toward extraction)
-            else:  # Crowding  
-                x1, x2 = x - 10, x - 10 + L  # Points RIGHT → (expand away from midline)
-        elif tooth_idx == 4:  # L6 (left molar)
-            if v > 0:  # Extraction/spacing
-                x1, x2 = x + 10, x + 10 - L  # Points LEFT ← (toward extraction)
-            else:  # Crowding
+            # Positive = mesial (RIGHT →), Negative = distal (LEFT ←)
+            if v > 0:
                 x1, x2 = x - 10, x - 10 + L  # Points RIGHT →
+            else:
+                x1, x2 = x + 10, x + 10 - L  # Points LEFT ←
+
+        elif tooth_idx == 1:  # R3 (right canine)
+            # Positive = mesial (RIGHT →), Negative = distal (LEFT ←)
+            if v > 0:
+                x1, x2 = x - 10, x - 10 + L  # Points RIGHT →
+            else:
+                x1, x2 = x + 10, x + 10 - L  # Points LEFT ←
+
+        elif tooth_idx == 3:  # L3 (left canine)
+            # Positive = mesial (LEFT ←), Negative = distal (RIGHT →)
+            if v > 0:
+                x1, x2 = x + 10, x + 10 - L  # Points LEFT ←
+            else:
+                x1, x2 = x - 10, x - 10 + L  # Points RIGHT →
+
+        elif tooth_idx == 4:  # L6 (left molar)
+            # Positive = mesial (LEFT ←), Negative = distal (RIGHT →)
+            if v > 0:
+                x1, x2 = x + 10, x + 10 - L  # Points LEFT ←
+            else:
+                x1, x2 = x - 10, x - 10 + L  # Points RIGHT →
+
         else:  # Incisors (idx 2)
             if v > 0:
                 x1, x2 = x + 10, x + 10 - L  # Points LEFT ←
@@ -519,7 +527,7 @@ def proposed_movement_svg_two_arch(
         <text x="50" y="{y_label}" text-anchor="start"
               font-family="Arial" font-size="20" font-weight="700" fill="#333">{label}</text>
         """
-        
+
         line = f"""<line x1="85" y1="{y_line}" x2="{W-85}" y2="{y_line}" stroke="#222" stroke-width="4"/>"""
         teeth = "\n".join(tooth(x, y_tooth, lab) for x, lab in zip(xs, tooth_labels))
         arrows = "\n".join(arrow(x, y_arrow, v, i) for i, (x, v) in enumerate(zip(xs, vs)))
@@ -1512,7 +1520,7 @@ with tabs[3]:
     # RENDER THE VISUALIZATION
     # ======================================
     st.markdown("### Visual Treatment Objective")
-    
+
     svg = proposed_movement_svg_two_arch(
         u_r6, u_r3, u_inc, u_l3, u_l6,
         l_r6, l_r3, l_inc, l_l3, l_l6,
