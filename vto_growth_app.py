@@ -1430,19 +1430,18 @@ with tabs[3]:
     upper_premolar_space_L = upper_extraction_L
 
     # STEP 7: Upper canine movement
-    # When upper premolar space is positive (extraction case):
-    # - Molars move MESIAL (forward, positive)
-    # - Canines move DISTAL (backward, negative)
-    # - Both teeth move toward the extraction site with equal magnitude
-    # Formula: Canine movement has opposite sign from molar movement
-    if upper_premolar_space_R > 0 or upper_premolar_space_L > 0:
-        # Extraction case: canines move opposite direction from molars
-        u_r3 = -u_r6
-        u_l3 = -u_l6
-    else:
-        # Crowding case: all posterior teeth move together
-        u_r3 = u_r6
-        u_l3 = u_l6
+    # Formula: Canine movement = Molar movement - Extraction space
+    # This ensures the space between molar and canine closes by the extraction amount
+    #
+    # Example with 7mm extraction:
+    # - Molar moves +2.5mm mesial
+    # - Canine = 2.5 - 7 = -4.5mm distal
+    # - Space closed = 2.5 - (-4.5) = 7mm ✓
+    #
+    # With no extraction (0mm):
+    # - Canine = Molar - 0 = Molar (they move together)
+    u_r3 = u_r6 - upper_premolar_space_R
+    u_l3 = u_l6 - upper_premolar_space_L
 
     # STEP 7B: Class Relationship Adjustment
     # Apply treatment goal adjustment to upper molars AND canines
@@ -1483,15 +1482,11 @@ with tabs[3]:
 
     st.markdown('<div class="band-green">Upper Arch Calculations (Steps 5-8)</div>', unsafe_allow_html=True)
 
-    # Determine if crowding or extraction case
-    is_extraction = upper_premolar_space_R > 0 or upper_premolar_space_L > 0
-    canine_calc_method = "Opposite molar (distal)" if is_extraction else "Match molar (crowding)"
-
     # Build step-by-step display
     steps = [
         ["Step 5: Molar Movement", f"Lower M6 - Class offset", "→", f"{u_r6:+.1f} / {u_l6:+.1f}", "R6 / L6"],
-        ["Step 6: Premolar/Molar Space", f"{upper_premolar_space_R:+.1f} / {upper_premolar_space_L:+.1f}", "", "", "Anterior to molars"],
-        ["Step 7: Canine Movement", canine_calc_method, "→", f"{u_r3:+.1f} / {u_l3:+.1f}", "R3 / L3"],
+        ["Step 6: Premolar/Molar Space", f"{upper_premolar_space_R:+.1f} / {upper_premolar_space_L:+.1f}", "", "", "Extraction space"],
+        ["Step 7: Canine Movement", f"M6 - Extraction space", "→", f"{u_r3:+.1f} / {u_l3:+.1f}", "R3 / L3"],
     ]
 
     # Add Class adjustment if not treating to Class I
