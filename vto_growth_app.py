@@ -978,8 +978,6 @@ with tabs[2]:
     # Initialize session state for all inputs
     ss_init("ant_cs_33_R", 0.0)
     ss_init("ant_cs_33_L", 0.0)
-    ss_init("post_cs_77_R", 0.0)
-    ss_init("post_cs_77_L", 0.0)
     ss_init("cos_bicusp_77_R", 0.0)
     ss_init("cos_bicusp_77_L", 0.0)
     ss_init("cos_molar_77_R", 0.0)
@@ -1029,21 +1027,6 @@ with tabs[2]:
     with col5:
         # Mirror from 3-3
         st.markdown(f"<div style='text-align: center; padding: 4px; background: #e8f4f9; border-radius: 3px; font-size: 13px;'>{ant_cs_L:.1f}</div>", unsafe_allow_html=True)
-
-    # Post. Crowding/Spacing
-    col1, col2, col3, col_sep, col4, col5 = st.columns([1.8, 0.5, 0.5, 0.15, 0.5, 0.5])
-    with col1:
-        st.markdown("<div style='font-size: 13px; font-weight: 500; padding: 6px 0;'>Post. Crowding/Spacing</div>", unsafe_allow_html=True)
-    with col2:
-        st.markdown("<div style='text-align: center; font-size: 13px; color: #999; padding: 6px 0;'>—</div>", unsafe_allow_html=True)
-    with col3:
-        st.markdown("<div style='text-align: center; font-size: 13px; color: #999; padding: 6px 0;'>—</div>", unsafe_allow_html=True)
-    with col_sep:
-        st.markdown("<div style='border-left: 2px solid #999; height: 32px; margin: 0 auto;'></div>", unsafe_allow_html=True)
-    with col4:
-        st.number_input("", step=0.1, key="post_cs_77_R", label_visibility="collapsed")
-    with col5:
-        st.number_input("", step=0.1, key="post_cs_77_L", label_visibility="collapsed")
 
     # C/S Bicusp/E
     col1, col2, col3, col_sep, col4, col5 = st.columns([1.8, 0.5, 0.5, 0.15, 0.5, 0.5])
@@ -1148,18 +1131,16 @@ with tabs[2]:
                     (-lower_dental_midline) +  # L uses -midline
                     float(st.session_state["inc_pos_33_L"]))
     
-    # 7-7 includes: Ant C/S + Post C/S + C/S Bicusp + C/S Molars + COS + Midline + Inc Pos (from 3-3)
+    # 7-7 includes: Ant C/S + C/S Bicusp + C/S Molars + COS + Midline + Inc Pos (from 3-3)
     initial_77_R = (float(st.session_state["ant_cs_33_R"]) +  # Ant C/S from 3-3
-                    float(st.session_state["post_cs_77_R"]) +
                     float(st.session_state["cos_bicusp_77_R"]) +
-                    float(st.session_state["cos_molar_77_R"]) +
+                    float(st.session_state["cos_molar_77_R"]) +  # C/S Molars (7-7 only)
                     float(st.session_state["cos_33_R"]) +  # COS from 3-3
                     lower_dental_midline +  # Midline from 3-3 (R uses +midline)
                     float(st.session_state["inc_pos_33_R"]))  # Inc Pos from 3-3
     initial_77_L = (float(st.session_state["ant_cs_33_L"]) +  # Ant C/S from 3-3
-                    float(st.session_state["post_cs_77_L"]) +
                     float(st.session_state["cos_bicusp_77_L"]) +
-                    float(st.session_state["cos_molar_77_L"]) +
+                    float(st.session_state["cos_molar_77_L"]) +  # C/S Molars (7-7 only)
                     float(st.session_state["cos_33_L"]) +  # COS from 3-3
                     (-lower_dental_midline) +  # Midline from 3-3 (L uses -midline)
                     float(st.session_state["inc_pos_33_L"]))  # Inc Pos from 3-3
