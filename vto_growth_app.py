@@ -1444,6 +1444,22 @@ with tabs[3]:
         u_r3 = u_r6
         u_l3 = u_l6
 
+    # STEP 7B: Class Relationship Adjustment
+    # Apply treatment goal adjustment to upper molars AND canines
+    # Class II: Move upper arch +7mm mesial (forward)
+    # Class III: Move upper arch -6mm distal (backward)
+    class_adjustment = 0.0
+    if treat_to == "Class II":
+        class_adjustment = 7.0  # Mesial movement
+    elif treat_to == "Class III":
+        class_adjustment = -6.0  # Distal movement
+
+    # Apply adjustment to both molars and canines
+    u_r6 += class_adjustment
+    u_l6 += class_adjustment
+    u_r3 += class_adjustment
+    u_l3 += class_adjustment
+
     # STEP 8: Upper midline correction
     # Based on original upper dental midline from Chart 1
     upper_midline = float(st.session_state.get("upper_midline_mm", 0.0))
@@ -1471,12 +1487,21 @@ with tabs[3]:
     is_extraction = upper_premolar_space_R > 0 or upper_premolar_space_L > 0
     canine_calc_method = "Opposite molar (distal)" if is_extraction else "Match molar (crowding)"
 
-    upper_calc = pd.DataFrame([
+    # Build step-by-step display
+    steps = [
         ["Step 5: Molar Movement", f"Lower M6 - Class offset", "→", f"{u_r6:+.1f} / {u_l6:+.1f}", "R6 / L6"],
         ["Step 6: Premolar/Molar Space", f"{upper_premolar_space_R:+.1f} / {upper_premolar_space_L:+.1f}", "", "", "Anterior to molars"],
         ["Step 7: Canine Movement", canine_calc_method, "→", f"{u_r3:+.1f} / {u_l3:+.1f}", "R3 / L3"],
-        ["Step 8: Midline Correction", f"{upper_midline:+.1f}", "→", f"{u_inc:+.1f}", "Incisors"],
-    ], columns=["McLaughlin Step", "Input", "", "Result", "Applies to"])
+    ]
+
+    # Add Class adjustment if not treating to Class I
+    if treat_to != "Class I":
+        class_desc = f"Treat to {treat_to}"
+        steps.append(["Step 7B: Class Adjustment", class_desc, "→", f"{class_adjustment:+.1f}", "Both M6 & C3"])
+
+    steps.append(["Step 8: Midline Correction", f"{upper_midline:+.1f}", "→", f"{u_inc:+.1f}", "Incisors"])
+
+    upper_calc = pd.DataFrame(steps, columns=["McLaughlin Step", "Input", "", "Result", "Applies to"])
     st.dataframe(upper_calc, use_container_width=True, hide_index=True)
 
     st.markdown("---")
