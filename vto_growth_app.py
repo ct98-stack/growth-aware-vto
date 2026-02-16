@@ -1205,18 +1205,24 @@ with tabs[2]:
     with col_sep:
         st.markdown("<div style='border-left: 3px solid #666; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
 
-    # Read 3-3 values and auto-populate to 7-7
+    # Read 3-3 values
     strip_33_R = float(st.session_state.get('strip_33_R', 0.0))
     strip_33_L = float(st.session_state.get('strip_33_L', 0.0))
 
-    # Store mirrored values in session state for calculations
-    st.session_state["strip_77_R"] = strip_33_R
-    st.session_state["strip_77_L"] = strip_33_L
+    # Auto-populate 7-7 to at least match 3-3 (but allow user to add more for posterior IPR)
+    # Only update if 7-7 is less than 3-3 (preserves manual increases)
+    strip_77_R_current = float(st.session_state.get('strip_77_R', 0.0))
+    strip_77_L_current = float(st.session_state.get('strip_77_L', 0.0))
+
+    if strip_77_R_current < strip_33_R:
+        st.session_state["strip_77_R"] = strip_33_R
+    if strip_77_L_current < strip_33_L:
+        st.session_state["strip_77_L"] = strip_33_L
 
     with col4:
-        st.markdown(f"<div style='text-align: center; padding: 6px; background: #e8f5e9; border-radius: 4px;'>{strip_33_R:.1f}</div>", unsafe_allow_html=True)
+        st.number_input("", step=0.1, key="strip_77_R", label_visibility="collapsed")
     with col5:
-        st.markdown(f"<div style='text-align: center; padding: 6px; background: #e8f5e9; border-radius: 4px;'>{strip_33_L:.1f}</div>", unsafe_allow_html=True)
+        st.number_input("", step=0.1, key="strip_77_L", label_visibility="collapsed")
     
     # Expansion
     col1, col2, col3, col_sep, col4, col5 = st.columns([2, 0.5, 0.5, 0.2, 0.5, 0.5])
