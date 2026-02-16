@@ -1398,18 +1398,19 @@ with tabs[3]:
     upper_premolar_space_L = lower_premolar_space_L
 
     # STEP 7: Upper canine movement
-    # In crowding: all posterior teeth move symmetrically (match molar movement)
-    # In extraction: canines move mesially by molar movement + premolar space to close extraction space
-    # Check if crowding (negative remaining) or extraction (positive remaining)
-    if L_remaining_33_R < 0 or L_remaining_33_L < 0:
-        # Crowding case: all posterior teeth move the same amount
+    # When upper premolar space is positive (extraction case):
+    # - Molars move MESIAL (forward, positive)
+    # - Canines move DISTAL (backward, negative)
+    # - Both teeth move toward the extraction site with equal magnitude
+    # Formula: Canine movement has opposite sign from molar movement
+    if upper_premolar_space_R > 0 or upper_premolar_space_L > 0:
+        # Extraction case: canines move opposite direction from molars
+        u_r3 = -u_r6
+        u_l3 = -u_l6
+    else:
+        # Crowding case: all posterior teeth move together
         u_r3 = u_r6
         u_l3 = u_l6
-    else:
-        # Extraction/spacing case: canines move mesially to close space
-        # Canine movement = Molar movement + Premolar space (both mesial in extraction)
-        u_r3 = u_r6 + upper_premolar_space_R
-        u_l3 = u_l6 + upper_premolar_space_L
 
     # STEP 8: Upper midline correction
     # Based on original upper dental midline from Chart 1
@@ -1435,8 +1436,8 @@ with tabs[3]:
     st.markdown('<div class="band-green">Upper Arch Calculations (Steps 5-8)</div>', unsafe_allow_html=True)
 
     # Determine if crowding or extraction case
-    is_crowding = L_remaining_33_R < 0 or L_remaining_33_L < 0
-    canine_calc_method = "Match molar (crowding)" if is_crowding else "Molar + PM space (mesial)"
+    is_extraction = upper_premolar_space_R > 0 or upper_premolar_space_L > 0
+    canine_calc_method = "Opposite molar (distal)" if is_extraction else "Match molar (crowding)"
 
     upper_calc = pd.DataFrame([
         ["Step 5: Molar Movement", f"Lower M6 - Class offset", "→", f"{u_r6:+.1f} / {u_l6:+.1f}", "R6 / L6"],
