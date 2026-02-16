@@ -1270,8 +1270,9 @@ with tabs[2]:
     # Store in session state for Step 3
     st.session_state["remaining_L_R"] = remaining_33_R  # 3-3 anterior
     st.session_state["remaining_L_L"] = remaining_33_L  # 3-3 anterior
-    st.session_state["remaining_77_R"] = remaining_77_R  # 7-7 posterior
-    st.session_state["remaining_77_L"] = remaining_77_L  # 7-7 posterior
+    # For 7-7: exclude C/S Molars from movement (C/S Molars affects discrepancy but not tooth movement)
+    st.session_state["remaining_77_R"] = remaining_77_R - float(st.session_state["cos_molar_77_R"])
+    st.session_state["remaining_77_L"] = remaining_77_L - float(st.session_state["cos_molar_77_L"])
 
     # Visual separator before Remaining Discrepancy - Compact
     st.markdown("<hr style='border: none; border-top: 1px dashed #ccc; margin: 12px 0;'>", unsafe_allow_html=True)
