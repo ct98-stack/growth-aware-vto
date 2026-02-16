@@ -312,8 +312,8 @@ def initial_position_svg(
 
     def midline_correction_arrow(midline_val: float, y: int, arch: str) -> str:
         """Show arrow indicating midline correction direction
-        Negative midline = shifted to patient's LEFT → correct to patient's RIGHT (arrow →)
-        Positive midline = shifted to patient's RIGHT → correct to patient's LEFT (arrow ←)
+        Positive midline = correct to patient's RIGHT (arrow →)
+        Negative midline = correct to patient's LEFT (arrow ←)
         """
         if abs(midline_val) < 0.2:
             return ""  # No arrow if midline essentially centered
@@ -323,13 +323,13 @@ def initial_position_svg(
         arrow_length = min(60, abs(midline_val) * 20)
         color = "#ff6f00"  # Orange for midline correction
 
-        # Negative midline = arrow points RIGHT (→)
-        # Positive midline = arrow points LEFT (←)
-        if midline_val < 0:
-            # Shifted left, correct right →
+        # Positive midline = arrow points RIGHT (→)
+        # Negative midline = arrow points LEFT (←)
+        if midline_val > 0:
+            # Correct to patient's right →
             x1, x2 = x_midline - 10, x_midline - 10 + arrow_length
         else:
-            # Shifted right, correct left ←
+            # Correct to patient's left ←
             x1, x2 = x_midline + 10, x_midline + 10 - arrow_length
 
         return f"""
@@ -701,10 +701,10 @@ with tabs[0]:
         m1, m2 = st.columns(2)
         with m1:
             st.number_input(
-                "Lower dental midline (mm)", 
-                step=0.1, 
+                "Lower dental midline (mm)",
+                step=0.1,
                 key="lower_dental_midline_mm",
-                help="Positive = midline shifted to patient's LEFT. Negative = shifted to patient's RIGHT."
+                help="Positive = correction to patient's RIGHT. Negative = correction to patient's LEFT."
             )
         with m2:
             st.number_input("Lower skeletal midline (mm)", step=0.1, key="lower_skeletal_midline_mm")
