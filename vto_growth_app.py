@@ -1399,16 +1399,17 @@ with tabs[3]:
 
     # STEP 7: Upper canine movement
     # In crowding: all posterior teeth move symmetrically (match molar movement)
-    # In extraction: use premolar space to differentiate movement
+    # In extraction: canines move mesially by molar movement + premolar space to close extraction space
     # Check if crowding (negative remaining) or extraction (positive remaining)
     if L_remaining_33_R < 0 or L_remaining_33_L < 0:
         # Crowding case: all posterior teeth move the same amount
         u_r3 = u_r6
         u_l3 = u_l6
     else:
-        # Extraction/spacing case: use premolar space differentiation
-        u_r3 = u_r6 - upper_premolar_space_R
-        u_l3 = u_l6 - upper_premolar_space_L
+        # Extraction/spacing case: canines move mesially to close space
+        # Canine movement = Molar movement + Premolar space (both mesial in extraction)
+        u_r3 = u_r6 + upper_premolar_space_R
+        u_l3 = u_l6 + upper_premolar_space_L
 
     # STEP 8: Upper midline correction
     # Based on original upper dental midline from Chart 1
@@ -1435,7 +1436,7 @@ with tabs[3]:
 
     # Determine if crowding or extraction case
     is_crowding = L_remaining_33_R < 0 or L_remaining_33_L < 0
-    canine_calc_method = "Match molar (crowding)" if is_crowding else "Molar - PM space"
+    canine_calc_method = "Match molar (crowding)" if is_crowding else "Molar + PM space (mesial)"
 
     upper_calc = pd.DataFrame([
         ["Step 5: Molar Movement", f"Lower M6 - Class offset", "→", f"{u_r6:+.1f} / {u_l6:+.1f}", "R6 / L6"],
