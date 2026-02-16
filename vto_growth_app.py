@@ -314,8 +314,8 @@ def initial_position_svg(
 
     def midline_correction_arrow(midline_val: float, y: int, arch: str) -> str:
         """Show arrow indicating midline correction direction
-        Positive midline = shifted to patient's LEFT → correct to patient's RIGHT (arrow →)
-        Negative midline = shifted to patient's RIGHT → correct to patient's LEFT (arrow ←)
+        Negative midline = shifted to patient's LEFT → correct to patient's RIGHT (arrow →)
+        Positive midline = shifted to patient's RIGHT → correct to patient's LEFT (arrow ←)
         """
         if abs(midline_val) < 0.2:
             return ""  # No arrow if midline essentially centered
@@ -325,9 +325,9 @@ def initial_position_svg(
         arrow_length = min(60, abs(midline_val) * 20)
         color = "#ff6f00"  # Orange for midline correction
 
-        # Positive midline = arrow points RIGHT (→)
-        # Negative midline = arrow points LEFT (←)
-        if midline_val > 0:
+        # Negative midline = arrow points RIGHT (→)
+        # Positive midline = arrow points LEFT (←)
+        if midline_val < 0:
             # Shifted left, correct right →
             x1, x2 = x_midline - 10, x_midline - 10 + arrow_length
         else:
@@ -1101,17 +1101,17 @@ with tabs[2]:
     with col1:
         st.markdown("**Midline**")
     with col2:
-        st.markdown(f"<div style='text-align: center; padding: 6px; background: #fff3e0; border-radius: 4px;'>{-lower_dental_midline:+.1f}</div>", unsafe_allow_html=True)
-    with col3:
         st.markdown(f"<div style='text-align: center; padding: 6px; background: #fff3e0; border-radius: 4px;'>{lower_dental_midline:+.1f}</div>", unsafe_allow_html=True)
+    with col3:
+        st.markdown(f"<div style='text-align: center; padding: 6px; background: #fff3e0; border-radius: 4px;'>{-lower_dental_midline:+.1f}</div>", unsafe_allow_html=True)
     with col_sep:
         st.markdown("<div style='border-left: 3px solid #666; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
     with col4:
         # Mirror from 3-3
-        st.markdown(f"<div style='text-align: center; padding: 6px; background: #fff3e0; border-radius: 4px;'>{-lower_dental_midline:+.1f}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='text-align: center; padding: 6px; background: #fff3e0; border-radius: 4px;'>{lower_dental_midline:+.1f}</div>", unsafe_allow_html=True)
     with col5:
         # Mirror from 3-3
-        st.markdown(f"<div style='text-align: center; padding: 6px; background: #fff3e0; border-radius: 4px;'>{lower_dental_midline:+.1f}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='text-align: center; padding: 6px; background: #fff3e0; border-radius: 4px;'>{-lower_dental_midline:+.1f}</div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
     # Incisor Position
@@ -1141,29 +1141,29 @@ with tabs[2]:
     st.markdown("<hr style='border: none; border-top: 2px dashed #ccc; margin: 20px 0;'>", unsafe_allow_html=True)
 
     # Calculate Initial Discrepancy
-    initial_33_R = (float(st.session_state["ant_cs_33_R"]) + 
-                    float(st.session_state["cos_33_R"]) + 
-                    (-lower_dental_midline) +  # R uses -midline
+    initial_33_R = (float(st.session_state["ant_cs_33_R"]) +
+                    float(st.session_state["cos_33_R"]) +
+                    lower_dental_midline +  # R uses +midline
                     float(st.session_state["inc_pos_33_R"]))
-    initial_33_L = (float(st.session_state["ant_cs_33_L"]) + 
-                    float(st.session_state["cos_33_L"]) + 
-                    lower_dental_midline +  # L uses +midline
+    initial_33_L = (float(st.session_state["ant_cs_33_L"]) +
+                    float(st.session_state["cos_33_L"]) +
+                    (-lower_dental_midline) +  # L uses -midline
                     float(st.session_state["inc_pos_33_L"]))
     
     # 7-7 includes: Ant C/S + Post C/S + C/S Bicusp + C/S Molars + COS + Midline + Inc Pos (from 3-3)
     initial_77_R = (float(st.session_state["ant_cs_33_R"]) +  # Ant C/S from 3-3
-                    float(st.session_state["post_cs_77_R"]) + 
-                    float(st.session_state["cos_bicusp_77_R"]) + 
+                    float(st.session_state["post_cs_77_R"]) +
+                    float(st.session_state["cos_bicusp_77_R"]) +
                     float(st.session_state["cos_molar_77_R"]) +
                     float(st.session_state["cos_33_R"]) +  # COS from 3-3
-                    (-lower_dental_midline) +  # Midline from 3-3 (R uses -midline)
+                    lower_dental_midline +  # Midline from 3-3 (R uses +midline)
                     float(st.session_state["inc_pos_33_R"]))  # Inc Pos from 3-3
     initial_77_L = (float(st.session_state["ant_cs_33_L"]) +  # Ant C/S from 3-3
-                    float(st.session_state["post_cs_77_L"]) + 
-                    float(st.session_state["cos_bicusp_77_L"]) + 
+                    float(st.session_state["post_cs_77_L"]) +
+                    float(st.session_state["cos_bicusp_77_L"]) +
                     float(st.session_state["cos_molar_77_L"]) +
                     float(st.session_state["cos_33_L"]) +  # COS from 3-3
-                    lower_dental_midline +  # Midline from 3-3 (L uses +midline)
+                    (-lower_dental_midline) +  # Midline from 3-3 (L uses -midline)
                     float(st.session_state["inc_pos_33_L"]))  # Inc Pos from 3-3
     
     # INITIAL DISCREPANCY (Enhanced highlighting)
@@ -1364,8 +1364,8 @@ with tabs[3]:
     # Based on "Remaining Discrepancy" in 3-3 column (Chart 2) MINUS midline component
     # The midline is corrected by incisors, so canines move by remaining discrepancy without midline
     # Negative = distal movement, Positive = mesial movement
-    l_r3 = L_remaining_33_R + lower_dental_midline  # Remove -midline from R calculation
-    l_l3 = L_remaining_33_L - lower_dental_midline  # Remove +midline from L calculation
+    l_r3 = L_remaining_33_R - lower_dental_midline  # Remove +midline from R calculation
+    l_l3 = L_remaining_33_L + lower_dental_midline  # Remove -midline from L calculation
 
     # STEP 3: Lower premolar/molar space
     # Space behind canine = Total 7-7 space minus 3-3 space
@@ -1417,7 +1417,7 @@ with tabs[3]:
     lower_calc = pd.DataFrame([
         ["Step 1: Midline Correction", f"{lower_dental_midline:+.1f}", "→", f"{l_inc:+.1f}", "Incisors"],
         ["Step 2: Canine Movement", f"Rem. - Midline", "→", f"{l_r3:+.1f} / {l_l3:+.1f}", "R3 / L3"],
-        ["", f"({L_remaining_33_R:+.1f} + {lower_dental_midline:+.1f}) / ({L_remaining_33_L:+.1f} - {lower_dental_midline:+.1f})", "", "", ""],
+        ["", f"({L_remaining_33_R:+.1f} - {lower_dental_midline:+.1f}) / ({L_remaining_33_L:+.1f} + {lower_dental_midline:+.1f})", "", "", ""],
         ["Step 3: Premolar/Molar Space", f"{lower_premolar_space_R:+.1f} / {lower_premolar_space_L:+.1f}", "", "", "Behind canines"],
         ["Step 4: Molar Movement", f"Canine + PM space", "→", f"{l_r6:+.1f} / {l_l6:+.1f}", "R6 / L6"],
     ], columns=["McLaughlin Step", "Input", "", "Result", "Applies to"])
