@@ -912,7 +912,7 @@ with tabs[1]:
 # STEP 2
 # =========================================================
 with tabs[2]:
-    st.markdown('<div class="panel"><div class="panel-title">Step 2 — Lower Arch Discrepancy Analysis</div>', unsafe_allow_html=True)
+    st.markdown('<div class="panel"><div class="panel-title">Step 2 — Arch Discrepancy Analysis</div>', unsafe_allow_html=True)
     
     # Calculate growth space
     cvms_stage = st.session_state["cvms_stage"]
@@ -1309,6 +1309,368 @@ with tabs[2]:
         unsafe_allow_html=True
     )
 
+    # =========================================================
+    # UPPER ARCH DISCREPANCY ANALYSIS
+    # =========================================================
+
+    st.markdown("<hr style='border: none; border-top: 4px solid #1e6fff; margin: 40px 0;'>", unsafe_allow_html=True)
+
+    # Calculate growth space for upper arch
+    growth_U_total = growth_calc["upper_total"]
+    growth_U_33 = growth_U_total / 2.0  # Split between 3-3 sections
+    growth_U_77 = 0.0  # No growth contribution to 7-7 posterior
+
+    if include_growth:
+        st.markdown(
+            f"<div class='band-purple'>"
+            f"<b>Upper Arch Growth Space:</b> {growth_U_total:.2f} mm total (applied to anterior 3-3)"
+            f"</div>",
+            unsafe_allow_html=True
+        )
+
+    # Upper midline FROM STEP 1
+    upper_midline = float(st.session_state["upper_midline_mm"])
+
+    st.markdown(
+        f"<div class='band-gray'>"
+        f"<b>Midline from Step 1:</b> Upper dental = {upper_midline:+.2f} mm"
+        f"</div>",
+        unsafe_allow_html=True
+    )
+
+    st.markdown("---")
+
+    # Create table-style layout for UPPER arch
+    st.markdown("### Upper Arch Discrepancy")
+
+    # Main section headers spanning R+L columns
+    col_label, col_33_span, col_sep_main, col_77_span = st.columns([2, 1, 0.2, 1])
+    with col_33_span:
+        st.markdown("<div style='text-align: center; font-weight: bold; font-size: 18px; margin-bottom: 8px; color: #1e6fff;'>3 to 3</div>", unsafe_allow_html=True)
+    with col_sep_main:
+        st.markdown("<div style='border-left: 3px solid #666; height: 30px; margin: 0 auto;'></div>", unsafe_allow_html=True)
+    with col_77_span:
+        st.markdown("<div style='text-align: center; font-weight: bold; font-size: 18px; margin-bottom: 8px; color: #1e6fff;'>7 to 7</div>", unsafe_allow_html=True)
+
+    # Sub-headers (R and L)
+    col_sh1, col_r_33, col_l_33, col_sep, col_r_77, col_l_77 = st.columns([2, 0.5, 0.5, 0.2, 0.5, 0.5])
+    with col_r_33:
+        st.markdown("<div style='text-align: center; font-weight: bold; font-size: 14px;'>R</div>", unsafe_allow_html=True)
+    with col_l_33:
+        st.markdown("<div style='text-align: center; font-weight: bold; font-size: 14px;'>L</div>", unsafe_allow_html=True)
+    with col_sep:
+        st.markdown("<div style='border-left: 3px solid #666; height: 25px; margin: 0 auto;'></div>", unsafe_allow_html=True)
+    with col_r_77:
+        st.markdown("<div style='text-align: center; font-weight: bold; font-size: 14px;'>R</div>", unsafe_allow_html=True)
+    with col_l_77:
+        st.markdown("<div style='text-align: center; font-weight: bold; font-size: 14px;'>L</div>", unsafe_allow_html=True)
+
+    # Initialize session state for upper arch inputs
+    ss_init("ant_cs_U_33_R", 0.0)
+    ss_init("ant_cs_U_33_L", 0.0)
+    ss_init("post_cs_U_77_R", 0.0)
+    ss_init("post_cs_U_77_L", 0.0)
+    ss_init("cos_bicusp_U_77_R", 0.0)
+    ss_init("cos_bicusp_U_77_L", 0.0)
+    ss_init("cos_molar_U_77_R", 0.0)
+    ss_init("cos_molar_U_77_L", 0.0)
+    ss_init("cos_U_33_R", 0.0)
+    ss_init("cos_U_33_L", 0.0)
+    ss_init("inc_pos_U_33_R", 0.0)
+    ss_init("inc_pos_U_33_L", 0.0)
+    ss_init("strip_U_33_R", 0.0)
+    ss_init("strip_U_33_L", 0.0)
+    ss_init("strip_U_77_R", 0.0)
+    ss_init("strip_U_77_L", 0.0)
+    ss_init("exp_U_33_R", 0.0)
+    ss_init("exp_U_33_L", 0.0)
+    ss_init("exp_U_77_R", 0.0)
+    ss_init("exp_U_77_L", 0.0)
+    ss_init("dist_U_33_R", 0.0)
+    ss_init("dist_U_33_L", 0.0)
+    ss_init("dist_U_77_R", 0.0)
+    ss_init("dist_U_77_L", 0.0)
+    ss_init("ext_U_33_R", 0.0)
+    ss_init("ext_U_33_L", 0.0)
+    ss_init("ext_U_77_R", 0.0)
+    ss_init("ext_U_77_L", 0.0)
+
+    # INITIAL DISCREPANCY SECTION (Blue) - UPPER
+    st.markdown("<div style='background: rgba(30, 111, 255, .08); padding: 8px; border-radius: 8px; margin: 10px 0;'>", unsafe_allow_html=True)
+
+    # Ant. Crowding/Spacing
+    col1, col2, col3, col_sep, col4, col5 = st.columns([2, 0.5, 0.5, 0.2, 0.5, 0.5])
+    with col1:
+        st.markdown("**Ant. Crowding/Spacing**")
+    with col2:
+        st.number_input("", step=0.1, key="ant_cs_U_33_R", label_visibility="collapsed")
+    with col3:
+        st.number_input("", step=0.1, key="ant_cs_U_33_L", label_visibility="collapsed")
+    with col_sep:
+        st.markdown("<div style='border-left: 3px solid #666; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
+
+    ant_cs_U_R = float(st.session_state.get('ant_cs_U_33_R', 0.0))
+    ant_cs_U_L = float(st.session_state.get('ant_cs_U_33_L', 0.0))
+
+    with col4:
+        st.markdown(f"<div style='text-align: center; padding: 6px; background: #e3f2fd; border-radius: 4px;'>{ant_cs_U_R:.2f}</div>", unsafe_allow_html=True)
+    with col5:
+        st.markdown(f"<div style='text-align: center; padding: 6px; background: #e3f2fd; border-radius: 4px;'>{ant_cs_U_L:.2f}</div>", unsafe_allow_html=True)
+
+    # Post. Crowding/Spacing
+    col1, col2, col3, col_sep, col4, col5 = st.columns([2, 0.5, 0.5, 0.2, 0.5, 0.5])
+    with col1:
+        st.markdown("**Post. Crowding/Spacing**")
+    with col2:
+        st.markdown("<div style='text-align: center;'>—</div>", unsafe_allow_html=True)
+    with col3:
+        st.markdown("<div style='text-align: center;'>—</div>", unsafe_allow_html=True)
+    with col_sep:
+        st.markdown("<div style='border-left: 3px solid #666; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
+    with col4:
+        st.number_input("", step=0.1, key="post_cs_U_77_R", label_visibility="collapsed")
+    with col5:
+        st.number_input("", step=0.1, key="post_cs_U_77_L", label_visibility="collapsed")
+
+    # C/S Bicusp/E
+    col1, col2, col3, col_sep, col4, col5 = st.columns([2, 0.5, 0.5, 0.2, 0.5, 0.5])
+    with col1:
+        st.markdown("**C/S Bicusp/E**")
+    with col2:
+        st.number_input("", step=0.1, key="cos_U_33_R", label_visibility="collapsed")
+    with col3:
+        st.number_input("", step=0.1, key="cos_U_33_L", label_visibility="collapsed")
+    with col_sep:
+        st.markdown("<div style='border-left: 3px solid #666; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
+    with col4:
+        st.number_input("", step=0.1, key="cos_bicusp_U_77_R", label_visibility="collapsed")
+    with col5:
+        st.number_input("", step=0.1, key="cos_bicusp_U_77_L", label_visibility="collapsed")
+
+    # C/S Molar
+    col1, col2, col3, col_sep, col4, col5 = st.columns([2, 0.5, 0.5, 0.2, 0.5, 0.5])
+    with col1:
+        st.markdown("**C/S Molar**")
+    with col2:
+        st.markdown("<div style='text-align: center;'>—</div>", unsafe_allow_html=True)
+    with col3:
+        st.markdown("<div style='text-align: center;'>—</div>", unsafe_allow_html=True)
+    with col_sep:
+        st.markdown("<div style='border-left: 3px solid #666; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
+    with col4:
+        st.number_input("", step=0.1, key="cos_molar_U_77_R", label_visibility="collapsed")
+    with col5:
+        st.number_input("", step=0.1, key="cos_molar_U_77_L", label_visibility="collapsed")
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    # Midline row (auto-calculated from Step 1)
+    col1, col2, col3, col_sep, col4, col5 = st.columns([2, 0.5, 0.5, 0.2, 0.5, 0.5])
+    with col1:
+        st.markdown("**Midline**")
+    with col2:
+        st.markdown(f"<div style='text-align: center; padding: 6px; background: #fff3e0; border-radius: 4px;'>{upper_midline:+.1f}</div>", unsafe_allow_html=True)
+    with col3:
+        st.markdown(f"<div style='text-align: center; padding: 6px; background: #fff3e0; border-radius: 4px;'>{-upper_midline:+.1f}</div>", unsafe_allow_html=True)
+    with col_sep:
+        st.markdown("<div style='border-left: 3px solid #666; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
+    with col4:
+        st.markdown(f"<div style='text-align: center; padding: 6px; background: #fff3e0; border-radius: 4px;'>{upper_midline:+.1f}</div>", unsafe_allow_html=True)
+    with col5:
+        st.markdown(f"<div style='text-align: center; padding: 6px; background: #fff3e0; border-radius: 4px;'>{-upper_midline:+.1f}</div>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    # Incisor Position
+    col1, col2, col3, col_sep, col4, col5 = st.columns([2, 0.5, 0.5, 0.2, 0.5, 0.5])
+    with col1:
+        st.markdown("**Incisor Position**")
+    with col2:
+        st.number_input("", step=0.1, key="inc_pos_U_33_R", label_visibility="collapsed")
+    with col3:
+        st.number_input("", step=0.1, key="inc_pos_U_33_L", label_visibility="collapsed")
+    with col_sep:
+        st.markdown("<div style='border-left: 3px solid #666; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
+
+    inc_pos_U_R = float(st.session_state.get('inc_pos_U_33_R', 0.0))
+    inc_pos_U_L = float(st.session_state.get('inc_pos_U_33_L', 0.0))
+
+    with col4:
+        st.markdown(f"<div style='text-align: center; padding: 6px; background: #e8f4f8; border-radius: 4px;'>{inc_pos_U_R:.1f}</div>", unsafe_allow_html=True)
+    with col5:
+        st.markdown(f"<div style='text-align: center; padding: 6px; background: #e8f4f8; border-radius: 4px;'>{inc_pos_U_L:.1f}</div>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    # Visual separator before calculations
+    st.markdown("<hr style='border: none; border-top: 2px dashed #ccc; margin: 20px 0;'>", unsafe_allow_html=True)
+
+    # Calculate Upper Initial Discrepancy
+    initial_U_33_R = (float(st.session_state["ant_cs_U_33_R"]) +
+                    float(st.session_state["cos_U_33_R"]) +
+                    upper_midline +  # R uses +midline
+                    float(st.session_state["inc_pos_U_33_R"]))
+    initial_U_33_L = (float(st.session_state["ant_cs_U_33_L"]) +
+                    float(st.session_state["cos_U_33_L"]) +
+                    (-upper_midline) +  # L uses -midline
+                    float(st.session_state["inc_pos_U_33_L"]))
+
+    initial_U_77_R = (float(st.session_state["ant_cs_U_33_R"]) +
+                    float(st.session_state["post_cs_U_77_R"]) +
+                    float(st.session_state["cos_bicusp_U_77_R"]) +
+                    float(st.session_state["cos_molar_U_77_R"]) +
+                    float(st.session_state["cos_U_33_R"]) +
+                    upper_midline +
+                    float(st.session_state["inc_pos_U_33_R"]))
+    initial_U_77_L = (float(st.session_state["ant_cs_U_33_L"]) +
+                    float(st.session_state["post_cs_U_77_L"]) +
+                    float(st.session_state["cos_bicusp_U_77_L"]) +
+                    float(st.session_state["cos_molar_U_77_L"]) +
+                    float(st.session_state["cos_U_33_L"]) +
+                    (-upper_midline) +
+                    float(st.session_state["inc_pos_U_33_L"]))
+
+    # UPPER INITIAL DISCREPANCY (Enhanced highlighting)
+    st.markdown("<div style='background: linear-gradient(135deg, rgba(255, 193, 7, .35) 0%, rgba(255, 152, 0, .35) 100%); padding: 14px; border-radius: 10px; margin: 15px 0; border: 3px solid rgba(255, 152, 0, .6); box-shadow: 0 4px 8px rgba(0,0,0,0.1);'>", unsafe_allow_html=True)
+    col1, col2, col3, col_sep, col4, col5 = st.columns([2, 0.5, 0.5, 0.2, 0.5, 0.5])
+    with col1:
+        st.markdown("<div style='font-size: 18px; font-weight: 900; color: #e65100;'>⚠️ Initial Discrepancy</div>", unsafe_allow_html=True)
+    with col2:
+        st.markdown(f"<div style='text-align: center; font-weight: 900; font-size: 20px; color: #e65100;'>{initial_U_33_R:.1f}</div>", unsafe_allow_html=True)
+    with col3:
+        st.markdown(f"<div style='text-align: center; font-weight: 900; font-size: 20px; color: #e65100;'>{initial_U_33_L:.1f}</div>", unsafe_allow_html=True)
+    with col_sep:
+        st.markdown("<div style='border-left: 4px solid #e65100; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
+    with col4:
+        st.markdown(f"<div style='text-align: center; font-weight: 900; font-size: 20px; color: #e65100;'>{initial_U_77_R:.1f}</div>", unsafe_allow_html=True)
+    with col5:
+        st.markdown(f"<div style='text-align: center; font-weight: 900; font-size: 20px; color: #e65100;'>{initial_U_77_L:.1f}</div>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    # SPACE GAINED SECTION (Green) - UPPER
+    st.markdown("<div style='background: rgba(30, 180, 90, .08); padding: 8px; border-radius: 8px; margin: 10px 0;'>", unsafe_allow_html=True)
+
+    # Stripping
+    col1, col2, col3, col_sep, col4, col5 = st.columns([2, 0.5, 0.5, 0.2, 0.5, 0.5])
+    with col1:
+        st.markdown("**Stripping**")
+    with col2:
+        st.number_input("", step=0.1, key="strip_U_33_R", label_visibility="collapsed")
+    with col3:
+        st.number_input("", step=0.1, key="strip_U_33_L", label_visibility="collapsed")
+    with col_sep:
+        st.markdown("<div style='border-left: 3px solid #666; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
+    with col4:
+        st.number_input("", step=0.1, key="strip_U_77_R", label_visibility="collapsed")
+    with col5:
+        st.number_input("", step=0.1, key="strip_U_77_L", label_visibility="collapsed")
+
+    # Expansion
+    col1, col2, col3, col_sep, col4, col5 = st.columns([2, 0.5, 0.5, 0.2, 0.5, 0.5])
+    with col1:
+        st.markdown("**Expansion**")
+    with col2:
+        st.number_input("", step=0.1, key="exp_U_33_R", label_visibility="collapsed")
+    with col3:
+        st.number_input("", step=0.1, key="exp_U_33_L", label_visibility="collapsed")
+    with col_sep:
+        st.markdown("<div style='border-left: 3px solid #666; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
+    with col4:
+        st.number_input("", step=0.1, key="exp_U_77_R", label_visibility="collapsed")
+    with col5:
+        st.number_input("", step=0.1, key="exp_U_77_L", label_visibility="collapsed")
+
+    # Distalizing 6-6
+    col1, col2, col3, col_sep, col4, col5 = st.columns([2, 0.5, 0.5, 0.2, 0.5, 0.5])
+    with col1:
+        st.markdown("**Distalizing 6-6**")
+    with col2:
+        st.number_input("", step=0.1, key="dist_U_33_R", label_visibility="collapsed")
+    with col3:
+        st.number_input("", step=0.1, key="dist_U_33_L", label_visibility="collapsed")
+    with col_sep:
+        st.markdown("<div style='border-left: 3px solid #666; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
+    with col4:
+        st.number_input("", step=0.1, key="dist_U_77_R", label_visibility="collapsed")
+    with col5:
+        st.number_input("", step=0.1, key="dist_U_77_L", label_visibility="collapsed")
+
+    # Extraction - UPPER ARCH
+    col1, col2, col3, col_sep, col4, col5 = st.columns([2, 0.5, 0.5, 0.2, 0.5, 0.5])
+    with col1:
+        st.markdown("**Extraction**")
+    with col2:
+        st.number_input("", step=0.1, key="ext_U_33_R", label_visibility="collapsed")
+    with col3:
+        st.number_input("", step=0.1, key="ext_U_33_L", label_visibility="collapsed")
+    with col_sep:
+        st.markdown("<div style='border-left: 3px solid #666; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
+    with col4:
+        st.number_input("", step=0.1, key="ext_U_77_R", label_visibility="collapsed")
+    with col5:
+        st.number_input("", step=0.1, key="ext_U_77_L", label_visibility="collapsed")
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    # Calculate Upper Total Gained and Remaining
+    gained_U_33_R = (float(st.session_state["strip_U_33_R"]) +
+                   float(st.session_state["exp_U_33_R"]) +
+                   float(st.session_state["dist_U_33_R"]) +
+                   float(st.session_state["ext_U_33_R"]) +
+                   growth_U_33)
+    gained_U_33_L = (float(st.session_state["strip_U_33_L"]) +
+                   float(st.session_state["exp_U_33_L"]) +
+                   float(st.session_state["dist_U_33_L"]) +
+                   float(st.session_state["ext_U_33_L"]) +
+                   growth_U_33)
+    gained_U_77_R = (float(st.session_state["strip_U_77_R"]) +
+                   float(st.session_state["exp_U_77_R"]) +
+                   float(st.session_state["dist_U_77_R"]) +
+                   float(st.session_state["ext_U_77_R"]) +
+                   growth_U_77)
+    gained_U_77_L = (float(st.session_state["strip_U_77_L"]) +
+                   float(st.session_state["exp_U_77_L"]) +
+                   float(st.session_state["dist_U_77_L"]) +
+                   float(st.session_state["ext_U_77_L"]) +
+                   growth_U_77)
+
+    remaining_U_33_R = initial_U_33_R + gained_U_33_R
+    remaining_U_33_L = initial_U_33_L + gained_U_33_L
+    remaining_U_77_R = initial_U_77_R + gained_U_77_R
+    remaining_U_77_L = initial_U_77_L + gained_U_77_L
+
+    # Store in session state for Step 3
+    st.session_state["remaining_U_R"] = remaining_U_33_R  # 3-3 anterior
+    st.session_state["remaining_U_L"] = remaining_U_33_L  # 3-3 anterior
+    st.session_state["remaining_U_77_R"] = remaining_U_77_R  # 7-7 posterior
+    st.session_state["remaining_U_77_L"] = remaining_U_77_L  # 7-7 posterior
+
+    # Visual separator before Remaining Discrepancy
+    st.markdown("<hr style='border: none; border-top: 2px dashed #ccc; margin: 20px 0;'>", unsafe_allow_html=True)
+
+    # UPPER REMAINING DISCREPANCY (Enhanced highlighting)
+    st.markdown("<div style='background: linear-gradient(135deg, rgba(76, 175, 80, .35) 0%, rgba(56, 142, 60, .35) 100%); padding: 14px; border-radius: 10px; margin: 15px 0; border: 3px solid rgba(56, 142, 60, .7); box-shadow: 0 4px 8px rgba(0,0,0,0.15);'>", unsafe_allow_html=True)
+    col1, col2, col3, col_sep, col4, col5 = st.columns([2, 0.5, 0.5, 0.2, 0.5, 0.5])
+    with col1:
+        st.markdown("<div style='font-size: 18px; font-weight: 900; color: #1b5e20;'>✓ Remaining Discrepancy</div>", unsafe_allow_html=True)
+    with col2:
+        st.markdown(f"<div style='text-align: center; font-weight: 900; font-size: 22px; color: #1b5e20;'>{remaining_U_33_R:.1f}</div>", unsafe_allow_html=True)
+    with col3:
+        st.markdown(f"<div style='text-align: center; font-weight: 900; font-size: 22px; color: #1b5e20;'>{remaining_U_33_L:.1f}</div>", unsafe_allow_html=True)
+    with col_sep:
+        st.markdown("<div style='border-left: 4px solid #1b5e20; height: 40px; margin: 0 auto;'></div>", unsafe_allow_html=True)
+    with col4:
+        st.markdown(f"<div style='text-align: center; font-weight: 900; font-size: 22px; color: #1b5e20;'>{remaining_U_77_R:.1f}</div>", unsafe_allow_html=True)
+    with col5:
+        st.markdown(f"<div style='text-align: center; font-weight: 900; font-size: 22px; color: #1b5e20;'>{remaining_U_77_L:.1f}</div>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    st.markdown(
+        f"<div class='band-gray'>"
+        f"<b>Status:</b> 3-3 Right {remaining_U_33_R:+.1f} ({remaining_status(remaining_U_33_R)}), "
+        f"3-3 Left {remaining_U_33_L:+.1f} ({remaining_status(remaining_U_33_L)})"
+        f"</div>",
+        unsafe_allow_html=True
+    )
+
     st.markdown("</div>", unsafe_allow_html=True)
 
 
@@ -1392,10 +1754,15 @@ with tabs[3]:
     u_l6 = l_l6 - initial_l6_class
 
     # STEP 6: Upper premolar/molar space
-    # This would be calculated from upper arch discrepancy analysis
-    # For now, assume symmetric with lower arch adjustment
-    upper_premolar_space_R = lower_premolar_space_R
-    upper_premolar_space_L = lower_premolar_space_L
+    # Get upper arch remaining discrepancy from session state (calculated in Step 2)
+    U_remaining_33_R = float(st.session_state.get("remaining_U_R", 0.0))  # 3-3 R
+    U_remaining_33_L = float(st.session_state.get("remaining_U_L", 0.0))  # 3-3 L
+    U_remaining_77_R = float(st.session_state.get("remaining_U_77_R", 0.0))  # 7-7 R
+    U_remaining_77_L = float(st.session_state.get("remaining_U_77_L", 0.0))  # 7-7 L
+
+    # Space behind canine = Total 7-7 space minus 3-3 space
+    upper_premolar_space_R = U_remaining_77_R - U_remaining_33_R
+    upper_premolar_space_L = U_remaining_77_L - U_remaining_33_L
 
     # STEP 7: Upper canine movement
     # When upper premolar space is positive (extraction case):
